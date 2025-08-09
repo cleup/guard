@@ -1,6 +1,6 @@
 <?php
 
-namespace Cleup\Guard\Purifier;
+namespace Cleup\Guard\Purifier\Utils;
 
 class Scrub
 {

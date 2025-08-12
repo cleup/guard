@@ -29,6 +29,65 @@ class Valid
     }
 
     /**
+     * Validates that a URL string uses one of the allowed protocols
+     * 
+     * @param string $url - The URL to validate
+     * @param array|string $allowedProtocols - A string or array of allowed protocols
+     * @return bool
+     */
+    public static function allowedProtocol(
+        string $url,
+        array|string $allowedProtocols = ['http', 'https', 'ftp']
+    ): bool {
+        if (is_string($allowedProtocols))
+            $allowedProtocols = [$allowedProtocols];
+
+        $parsed = parse_url($url);
+
+        if (!isset($parsed['scheme'])) {
+            return false;
+        }
+
+        return in_array(
+            strtolower($parsed['scheme']),
+            array_map('strtolower', $allowedProtocols)
+        );
+    }
+
+    /**
+     * Validates that a URL's host is in the list of allowed hosts
+     * 
+     * @param string $url - The URL to validate
+     * @param array|string $allowedHosts - A string or array of allowed hosts
+     * @return bool
+     */
+    public static function allowedHost(string $url, array|string $allowedHosts): bool
+    {
+        if (is_string($allowedHosts))
+            $allowedHosts = [$allowedHosts];
+
+        $parsed = parse_url($url);
+
+        if (!isset($parsed['host'])) {
+            return false;
+        }
+
+        $host = strtolower($parsed['host']);
+        $allowedHosts = array_map('strtolower', $allowedHosts);
+
+        foreach ($allowedHosts as $allowedHost) {
+            if (
+                $host === $allowedHost ||
+                (str_ends_with($host, '.' . $allowedHost) && $host !== $allowedHost)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Checks if a string is a valid domain name (without protocol).
      *
      * @param string $domain The domain to validate.
@@ -60,7 +119,6 @@ class Valid
         ) === 1;
     }
 
-
     /**
      * Validates if string is a properly formatted IPv4 or IPv6 address.
      *
@@ -81,7 +139,6 @@ class Valid
      */
     public static function phone(string $phone): bool
     {
-
         $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
         $digitLength = strlen($digitsOnly);
         $hasPlus = str_starts_with($phone, '+');
@@ -413,6 +470,7 @@ class Valid
         $now = new DateTime();
         return $dateTime->format('Y-m-d') === $now->format('Y-m-d');
     }
+
     /**
      * Checks the password complexity:
      * - Minimum of 8 characters
@@ -520,5 +578,29 @@ class Valid
     public static function bitcoinAddress(string $address): bool
     {
         return preg_match('/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/', $address) === 1;
+    }
+
+    /**
+     * Checks if the value length does not exceed the specified maximum length
+     * 
+     * @param int|float|string $value - The value to validate (can be number or string)
+     * @param int $length - Maximum allowed length
+     * @return bool
+     */
+    public static function maxLength(int|float|string $value, int $length): bool
+    {
+        return mb_strlen(strval($value), 'UTF-8') <= $length;
+    }
+
+    /**
+     * Checks if the value length meets or exceeds the specified minimum length
+     * 
+     * @param int|float|string $value - The value to validate (can be number or string)
+     * @param int $length - Minimum required length
+     * @return bool
+     */
+    public static function minLength(int|float|string $value, int $length): bool
+    {
+        return mb_strlen(strval($value), 'UTF-8') >= $length;
     }
 }

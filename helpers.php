@@ -7,9 +7,9 @@ if (!function_exists('escape')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::escape()
      */
-    function escape(string $input): string
+    function escape(string $input, string $chaset = 'UTF-8'): string
     {
-        return Scrub::escape($input);
+        return Scrub::escape($input, $chaset);
     }
 }
 

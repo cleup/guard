@@ -8,11 +8,12 @@ class Scrub
      * Escapes special characters in a string for safe HTML output
      * 
      * @param string $input The input string to be escaped
+     * @param string $chaset Charset
      * @return string
      */
-    public static function escape(string $input): string
+    public static function escape(string $input, $chaset = 'UTF-8'): string
     {
-        return htmlspecialchars($input, ENT_QUOTES, 'UTF-8');
+        return htmlspecialchars($input, ENT_QUOTES, $chaset);
     }
 
     /**

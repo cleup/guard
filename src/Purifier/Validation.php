@@ -205,10 +205,10 @@ class Validation extends Ruleset
         foreach ($verifyUtils as $utilName => $utilMessage) {
             if (array_key_exists($utilName, $rule)) {
                 $verifyClass = __NAMESPACE__ . "\\Utils\\Valid";
-                $args = is_array($rule[$utilName])
+                $arg = is_array($rule[$utilName])
                     ? $rule[$utilName]
                     : (!is_bool($rule[$utilName])
-                        ? [$rule[$utilName]] : []
+                        ? $rule[$utilName] : []
                     );
 
                 if (method_exists($verifyClass, $utilName)) {
@@ -216,7 +216,7 @@ class Validation extends Ruleset
                         !call_user_func_array([
                             $verifyClass,
                             $utilName
-                        ], [$value, ...$args])
+                        ], [$value, $arg])
                     ) {
                         $this->addError(
                             $key,

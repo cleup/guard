@@ -86,8 +86,9 @@ class Validation extends Ruleset
             }
         }
 
-        if (isset($rule['values'])) {
+        if (isset($rule['values']) && isset($value)) {
             $allowedValues = is_array($rule['values']) ? $rule['values'] : [$rule['values']];
+
             if (!in_array($value, $allowedValues, true)) {
                 $this->addError(
                     $key,

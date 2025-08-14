@@ -1,6 +1,6 @@
 {
   "name": "cleup/guard",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Provides robust security for web applications with a comprehensive toolkit for sanitization, filtering, and validation.",
   "keywords": [
     "guard",

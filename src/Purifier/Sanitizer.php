@@ -6,6 +6,28 @@ use Cleup\Guard\Purifier\Utils\Scrub;
 
 class Sanitizer extends Ruleset
 {
+    protected bool $strict;
+
+    /**
+     * @param array $rules Validation and sanitization rules
+     * @param bool $strict Whether to remove elements not defined in rules
+     */
+    public function __construct(array $rules, bool $strict = true)
+    {
+        parent::__construct($rules);
+        $this->strict = $strict;
+    }
+
+    private function getTypedData(string $type, $value): mixed
+    {
+        $method = 'process' . ucfirst($type);
+
+        if (method_exists($this, $method))
+            return call_user_func_array([$this, $method], [$value]);
+
+        return null;
+    }
+
     /**
      * Sanitizes input data according to defined rules
      * 
@@ -20,19 +42,22 @@ class Sanitizer extends Ruleset
             $rule = $this->normalizeRule($rule);
             $hasDefault = isset($rule['default']);
 
-            if (!array_key_exists($key, $data)) {
-                if ($hasDefault)
-                    $this->data[$key] = $rule['default'];
+            if (empty($rule['type']))
+                $rule['type'] = 'string';
 
+            if (!array_key_exists($key, $data)) {
+                if ($hasDefault) {
+                    $preparedDefault = $this->getTypedData($rule['type'], $rule['default']);
+
+                    if (!is_null($preparedDefault))
+                        $this->data[$key] = $preparedDefault;
+                }
                 continue;
             }
 
             $value = $data[$key];
 
-            if (
-                isset($rule['before']) &&
-                is_callable($rule['before'])
-            ) {
+            if (isset($rule['before']) && is_callable($rule['before'])) {
                 $value = $rule['before']($value, $this);
             }
 
@@ -44,12 +69,16 @@ class Sanitizer extends Ruleset
                         ? $rule['values']
                         : [$rule['values']];
 
-                    if (!in_array($value,  $values, true)) {
+                    if (!in_array($value, $values)) {
                         $allow = false;
 
                         if (isset($rule['default'])) {
-                            $value = $rule['default'];
-                            $allow = true;
+                            $preparedDefault = $this->getTypedData($rule['type'], $rule['default']);
+
+                            if (!is_null($preparedDefault)) {
+                                $value = $preparedDefault;
+                                $allow = true;
+                            }
                         }
                     }
                 }
@@ -57,19 +86,38 @@ class Sanitizer extends Ruleset
                 if ($allow) {
                     $processedValue = $this->processValue($value, $rule);
 
-                    if (
-                        isset($rule['after']) &&
-                        is_callable($rule['after'])
-                    ) {
+                    if (isset($rule['after']) && is_callable($rule['after'])) {
                         $processedValue = $rule['after']($processedValue, $this);
                     }
 
                     $this->data[$key] = $processedValue;
                 }
             } catch (\InvalidArgumentException $e) {
-                if ($hasDefault)
-                    $this->data[$key] = $rule['default'];
+                if ($hasDefault) {
+                    $preparedDefault = $this->getTypedData($rule['type'], $rule['default']);
+
+                    if (!is_null($preparedDefault))
+                        $this->data[$key] = $preparedDefault;
+                }
             }
+        }
+
+        if ($this->strict) {
+            $this->data = array_intersect_key($this->data, $this->rules);
+        } else {
+            $extraData = array_diff_key($data, $this->rules);
+
+            foreach ($extraData as $extKey => $extItem) {
+                if (!is_array($extItem)) {
+                    $extraData[$extKey] = Scrub::escape(
+                        Scrub::toString($extItem)
+                    );
+                } else {
+                    unset($extraData[$extKey]);
+                }
+            }
+
+            $this->data = array_merge($extraData, $this->data);
         }
 
         return $this;
@@ -81,97 +129,76 @@ class Sanitizer extends Ruleset
      * @param mixed $value - Value to process
      * @param array $rule - Processing rules
      * @return mixed
-     */
-    protected function process($value, $rule)
-    {
-        return $this->processValue($value, $rule);
-    }
-
-    /**
-     * Processes value according to its type rules
-     * 
-     * @param mixed $value - Value to process
-     * @param array $rule - Processing rules
-     * @return mixed
      * @throws \InvalidArgumentException When value doesn't match required type
      */
+
     private function processValue(mixed $value, array $rule): mixed
     {
         $type = $rule['type'] ?? 'string';
 
         if (!$this->isValidType($value, $type)) {
-            if ($type !== 'array')
+            if ($type !== 'array') {
                 throw new \InvalidArgumentException("Value does not match type $type");
-            else
-                return [];
+            }
+            return [];
         }
 
-        switch ($type) {
-            case 'string':
-                return $this->processString($value, $rule);
-            case 'array':
-                return $this->processArray($value, $rule);
-            case 'int':
-            case 'integer':
-                return $this->processInteger($value);
-            case 'float':
-            case 'floating':
-                return $this->processFloating($value);
-            case 'number':
-            case 'numeric':
-                return $this->processNumeric($value);
-            case 'bool':
-            case 'boolean':
-                return $this->processBoolean($value);
-            default:
+        if ($type !== 'array') {
+            $method = 'process' . ucfirst($type);
+
+            if (method_exists($this, $method)) {
+                $value = call_user_func_array([$this, $method], [$value]);
+                $scrubUtils = [
+                    'escape',
+                    'text',
+                    'url',
+                    'digits',
+                    'email',
+                    'slug',
+                    'encode',
+                    'stripWhitespace',
+                    'translitCyrillic',
+                    'normalizeString',
+                    'truncate'
+                ];
+
+                foreach ($scrubUtils as $utilName) {
+                    if (array_key_exists($utilName, $rule)) {
+                        $verifyClass = __NAMESPACE__ . "\\Utils\\Scrub";
+                        $arg = null;
+                        $args = [$value];
+
+                        if (!is_bool($rule[$utilName]) && !is_array($rule[$utilName])) {
+                            $args[] = $rule[$utilName];
+                        }
+
+                        if (method_exists($verifyClass, $utilName)) {
+                            $value = call_user_func_array(
+                                [$verifyClass, $utilName],
+                                $args
+                            );
+                        }
+                    }
+                }
+
                 return $value;
+            }
+
+            return null;
         }
+
+        return $this->processArray($value, $rule);
     }
 
     /**
      * Processes string value with optional filters
      * 
      * @param mixed $value - Value to process
-     * @param array $rule - String processing rules
      * @return string 
      */
-    private function processString(mixed $value, array $rule): string
+    private function processString(mixed $value): string
     {
-        $value = strval($value);
-
-        if (isset($rule['filters'])) {
-            foreach ($rule['filters'] as $filter) {
-                $value = $this->applyStringFilter($value, $filter);
-            }
-        }
-
-        return $value;
-    }
-
-    /**
-     * Applies specific filter to string value
-     * 
-     * @param string $value - String to filter
-     * @param string $filter - Filter to apply
-     * @return string
-     */
-    private function applyStringFilter(string $value, string $filter): string
-    {
-        switch ($filter) {
-            case 'esc':
-            case 'escape':
-                return Scrub::escape($value);
-            case 'trim':
-                return trim($value);
-            case 'lower':
-                return mb_strtolower($value, 'UTF-8');
-            case 'upper':
-                return mb_strtoupper($value, 'UTF-8');
-            case 'text':
-                return Scrub::filterText($value);
-            default:
-                return $value;
-        }
+        return Scrub::toString($value);
     }
 
     /**
@@ -185,130 +212,21 @@ class Sanitizer extends Ruleset
     {
         $value = (array)$value;
         $isAssoc = $rule['assoc'] ?? !$this->isListArray($value);
-
-        if (isset($rule['childRules']) && is_array($rule['childRules'])) {
-            $isRecursiveChildRules = !empty($rule['recursiveChildRules']);
-            $childSanitizer = new Sanitizer($rule['childRules']);
-
-            foreach ($value as $key => &$item) {
-                if (is_array($item)) {
-                    if ($isRecursiveChildRules) {
-                        $item = $this->applyChildRulesRecursively($item, $childSanitizer);
-                    } elseif (
-                        !isset($rule['data'][$key]) ||
-                        (is_string($rule['data'][$key]) && $rule['data'][$key] === 'array')
-                    ) {
-                        $item = $childSanitizer->sanitize($item);
-                    }
-                }
-            }
-
-            unset($item);
-        }
-
-        if (isset($rule['data']) && is_array($rule['data'])) {
-            $subSanitizer = new Sanitizer($rule['data']);
-
-            if (!$isAssoc && !isset($rule['assoc'])) {
-                $processed = $this->processListArray($value, $subSanitizer);
-            } else {
-                $processed = $subSanitizer->sanitize($value);
-            }
-
-            return empty($processed->getAll())
-                ? []
-                : $processed->getAll();
-        }
-
-        if (isset($rule['filters']) && is_array($rule['filters'])) {
-            foreach ($value as &$item) {
-                if (is_string($item)) {
-                    foreach ($rule['filters'] as $filter) {
-                        $item = $this->applyStringFilter($item, $filter);
-                    }
-                }
-            }
-            unset($item);
-        }
-
-        return empty($value) ? [] : $value;
-    }
-
-    /**
-     * Processes array as a list (non-associative array)
-     * 
-     * @param array $list - List array to process
-     * @param Sanitizer $sanitizer - Sanitizer with rules to apply
-     * @return array Processed list with invalid items removed
-     */
-    private function processListArray(array $list, Sanitizer $sanitizer): array
-    {
-        $result = [];
-        $rules = $sanitizer->getRules();
-        $isAssocRules = $this->isAssociativeArray($rules);
-
-        foreach ($list as $item) {
-            try {
-                if (is_array($item)) {
-                    $processed = $isAssocRules ? $sanitizer->sanitize($item) : $item;
-
-                    if (!empty($processed)) {
-                        $result[] = $processed;
-                    }
-                } else {
-                    if (!$isAssocRules && !empty($rules)) {
-                        $firstRule = reset($rules);
-                        $processed = $this->processValue($item, $this->normalizeRule($firstRule));
-                        $result[] = $processed;
-                    } else {
-                        $result[] = $item;
-                    }
-                }
-            } catch (\InvalidArgumentException $e) {
-                continue;
-            }
-        }
-
-        return empty($result) ? [] : $result;
-    }
-
-    private function applyChildRulesRecursively(array $data, Sanitizer $childSanitizer): array
-    {
         $result = [];
 
-        foreach ($data as $key => $value) {
-            if (is_array($value)) {
-                if ($this->isListArray($value)) {
-                    foreach ($value as $keyList => $listValue) {
-                        if (!isset($result[$key]))
-                            $result[$key] = [];
+        if (empty($rule['data']))
+            return [];
 
-                        $processed = $this->applyChildRulesRecursively($listValue, $childSanitizer);
-
-                        if (!empty($processed)) {
-                            $sanitized =  $childSanitizer->sanitize($processed);
-                            if (!empty($sanitized) && is_array($sanitized))
-                                $result[$key][$keyList] = $sanitized;
-                        }
-                    }
-                } else {
-                    $processed = $this->applyChildRulesRecursively($value, $childSanitizer);
-
-                    if (!empty($processed)) {
-                        $result[$key] = $childSanitizer->sanitize($processed);
-                    }
-                }
-            } else {
-                try {
-
-                    $processed = $childSanitizer->sanitize([$key => $value])[$key] ?? null;
-                    $result[$key] = $processed;
-                } catch (\InvalidArgumentException $e) {
+        if ($isAssoc) {
+            $subSanitizer = new Sanitizer($rule['data'], $this->strict);
+            $result = $subSanitizer->sanitize($value)->getAll();
+        } else {
+            foreach ($value as $listItem) {
+                if (!$this->isListArray($listItem)) {
+                    $subSanitizer = new Sanitizer($rule['data'], $this->strict);
+                    $result[] = $subSanitizer->sanitize($listItem)->getAll();
                 }
             }
-
-            if (empty($result[$key]))
-                unset($result[$key]);
         }
 
         return $result;
@@ -322,7 +240,15 @@ class Sanitizer extends Ruleset
      */
     private function processInteger(mixed $value): int
     {
-        return intval($value);
+        return intval($this->processNumeric($value));
+    }
+
+    /**
+     * @see $this->processInteger()
+     */
+    private function processInt(mixed $value): int
+    {
+        return $this->processInteger($value);
     }
 
     /**
@@ -333,7 +259,15 @@ class Sanitizer extends Ruleset
      */
     private function processFloating(mixed $value): float
     {
-        return floatval($value);
+        return floatval($this->processNumeric($value));
+    }
+
+    /**
+     * @see $this->processFloating()
+     */
+    private function processFloat(mixed $value): int
+    {
+        return $this->processFloating($value);
     }
 
     /**
@@ -344,7 +278,15 @@ class Sanitizer extends Ruleset
      */
     private function processNumeric(mixed $value): int|float
     {
-        return Scrub::filterNumeric($value);
+        return Scrub::toNumeric($value);
+    }
+
+    /**
+     * @see $this->processNumeric()
+     */
+    private function processNumber(mixed $value): int
+    {
+        return $this->processNumeric($value);
     }
 
     /**
@@ -355,61 +297,16 @@ class Sanitizer extends Ruleset
      */
     private function processBoolean(mixed $value): bool
     {
+        $value = $this->processString($value);
+
         return boolval($value);
     }
 
     /**
-     * @see Ruleset::ruleParts()
-     * 
-     * @param string $rule - Rule string to parse
-     * @return array
+     * @see $this->processBoolean()
      */
-    protected function ruleParts($parts, $parsedRule)
+    private function processBool(mixed $value): int
     {
-        $typeSegment = array_shift($parts);
-        $typeParts = explode(':', $typeSegment, 2);
-        $parsedRule = ['type' => $typeParts[0]];
-
-        if (isset($typeParts[1])) {
-            $parsedRule['filters'] = explode('|', $typeParts[1]);
-        }
-
-        return [$parts, $parsedRule];
-    }
-
-    /**
-     * @see Ruleset::rulePartParams()
-     * 
-     * @param string $param The parameter name
-     * @param mixed $paramValues The parameter values
-     * @param array $parsedRule The parsed rule data
-     * @return array
-     */
-    protected function rulePartParams($param, $paramValues, $parsedRule)
-    {
-        $paramValues =  (
-            $parsedRule['type'] !== 'array' &&
-            is_array($paramValues) &&
-            $param === 'default'
-        )
-            ? $paramValues[0]
-            : $paramValues;
-
-        return [
-            $param,
-            $paramValues,
-            $parsedRule
-        ];
-    }
-
-    /**
-     * @see Ruleset::singleProcess()
-     * 
-     * @param string $part The part to process
-     * @return bool
-     */
-    protected function singleProcess($part)
-    {
-        return null;
+        return $this->processBoolean($value);
     }
 }

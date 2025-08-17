@@ -76,9 +76,9 @@ class Ruleset
     }
 
     /**
-     * Gets all sanitized data
+     * Gets all data
      * 
-     * @return array All sanitized data
+     * @return array
      */
     public function getAll(): array
     {

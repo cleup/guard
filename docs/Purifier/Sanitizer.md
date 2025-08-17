@@ -21,23 +21,23 @@ use Cleup\Guard\Purifier\Sanitizer;
 
 $rules = [
     // This text string is still dangerous. To ensure safe data output, you need to use filters.
-    'username' => 'string',
+    'username' => 'type:string',
     /* Default filters:
         escape or esc - Escapes special html characters using the `htmlspecialchars` method.
         trim - Clears spaces at the start and end of a line.
         text - Completely clean and secure text, without tags, special characters and possible injections.
     */
-    'userNameByFilter' => 'string:trim|escape'
+    'userNameByFilter' => 'type:string;trim;escape'
     // Only the specified values are allowed (10, 77.3, 99).
-    'allowedNumbers' => 'numeric;values:10,77.3,99'
-    'age' => 'integer',
-    'incorrectTypeValue' => 'integer;default:10'
+    'allowedNumbers' => 'type:numeric;values:10|77.3|99'
+    'age' => 'type:integer',
+    'incorrectTypeValue' => 'type:integer;default:10'
     // Integers and floating point numbers (number|numeric)
-    'nummericValue' => 'numeric',
+    'nummericValue' => 'type:numeric',
     // (bool|boolean)
-    'boolValue' => 'bool'
+    'boolValue' => 'type:bool'
     // An unsafe parameter that ignores any data in the array. To set rules for an array, you can use the rule description method.
-    'arrayData' => 'array',
+    'arrayData' => 'array', // An empty array if strict mode is enabled, or shielded data if disabled
 ];
 
 $data = [
@@ -50,11 +50,11 @@ $data = [
     //'age' => 'x12' // If no default value is provided, the data will be removed from the array.
     'nummericValue' => 3.14,
     'boolValue' => true, // true
-    'arrayData' => ['hello' => 'world']  //  ['hello' => 'world']
+    'arrayData' => ['hello' => '<p>world</p>']  //  [] | ['hello' => '&lt;p&gt;world<&lt;/p&gt;']
     'unsafeArrat' => ['key' => 'value']  // It will be removed from the list, as it is not included in the rules.
 ];
 
-$sanitizer = new Sanitizer($rules);
+$sanitizer = new Sanitizer($rules /*, $strict = true */);
 // Get all processed items.
 $cleanData = $sanitizer->sanitize($data)->getAll();
 ```
@@ -67,7 +67,7 @@ use Cleup\Guard\Purifier\Sanitizer;
 $rules = [
    'name' => [
         'type' => 'string',
-        'filters' => ['text'],
+        'text' => true,
         'values' => ['Eduard', 'John', 'Alex'],
         'default' => 'Unknown'
     ],
@@ -90,8 +90,8 @@ $rules = [
             'city' => 'string:trim',
             'website' => 'string:text'
             // Or
-            // 'city' => ['type' => 'string', 'filters' => ['trim']],
-            // 'website' => ['type' => 'string', 'filters' => ['text']],
+            // 'city' => ['type' => 'string', 'trim' => true],
+            // 'website' => ['type' => 'string', 'text' => true],
         ]
     ]
 ];
@@ -100,7 +100,7 @@ $data = [
     // It will be set to "Unknown" because it is not in the list, and the default value has already been specified. If the default value is not defined, the element will not be included in the data array.
    'name' => 'Jack',
    'age' => 121,
-       'fields' => [
+        'fields' => [
         'city' => ' London ',
         'website' => 'https://cleup.priveted.com'
     ]
@@ -125,8 +125,20 @@ $rules = [
    'posts' => [
         'type' => 'array',
         'data' => [
-            'title' => 'string:text'
-            'content' => 'string:escape',
+            'title' => 'type:string;text'
+            'content' => 'escape',
+            'fields' => [
+                'type' => 'array'
+                'data' => [
+                    'likes' => 'type:integer;default:0',
+                    'inFavorite' => 'type:bool',
+                    'steps' => [
+                        'type' => 'string',
+                        'values' => [1, 3, 7],
+                        'default' => 0
+                    ]
+                ]
+            ]
         ]
     ],
 ];
@@ -135,48 +147,23 @@ $rules = [
 $data = [
     'posts' => [
         [
+            'id' => 1,
+            'title' => 'My title',
+            'content' => "<p>It's a great day to start something new.</p>",
+            'fields' => [
+                'likes' => 100,
+                'inFavorite' => true,
+                'steps' => 3
+            ]
+        ],
+        [
+            'id' => 2,
             'title' => 'My title',
             'content' => "<p>It's a great day to start something new.</p>"
         ],
         [
             'title' => 404, // The header will be deleted because it does not match the line type.
             'content' => 'Page not found'
-        ]
-    ]
-];
-
-$sanitizer = new Sanitizer($rules);
-$cleanData = $sanitizer->sanitize($data)->getAll();
-```
-
-Unique and recursive rules regarding arrays and their component parts.
-
-```php
-use Cleup\Guard\Purifier\Sanitizer;
-
-$rules = [
-   'parentArray' => [
-        'type' => 'array',
-        // Recursively applies rules to all elements that are arrays, at infinite levels of nesting.
-        'recursiveChildRules' => true,
-        // Rules for child elements, which are arrays.
-        'childRules' => [
-            'title' => 'string',
-            'views' => 'integer'
-        ]
-    ],
-];
-
-$data = [
-    'parentArray' => [
-        'title' => 'My tilte',
-        'childArrayPosts' => [
-            [
-                'title' => 'My post title' // My post title,
-                'fileds' => [
-                    'views' => 100 // 100. The element will always be formatted as a number or deleted if it does not match this type.
-                ]
-            ]
         ]
     ]
 ];

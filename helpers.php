@@ -15,21 +15,81 @@ if (!function_exists('escape')) {
 
 if (!function_exists('filter_url')) {
     /**
-     * @see Cleup\Guard\Purifier\Utils\Scrub::filterUrl()
+     * @see Cleup\Guard\Purifier\Utils\Scrub::url()
      */
     function filter_url(string $input): mixed
     {
-        return Scrub::filterUrl($input);
+        return Scrub::url($input);
     }
 }
 
 if (!function_exists('filter_text')) {
     /**
-     * @see Cleup\Guard\Purifier\Utils\Scrub::filterText()
+     * @see Cleup\Guard\Purifier\Utils\Scrub::text()
      */
     function filter_text(string $input): string
     {
-        return Scrub::filterText($input);
+        return Scrub::text($input);
+    }
+}
+
+if (!function_exists('to_string')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::toString()
+     */
+    function to_string(mixed $input): mixed
+    {
+        return Scrub::toString($input);
+    }
+}
+
+if (!function_exists('to_numeric')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::toNumeric()
+     */
+    function to_numeric(mixed $input): mixed
+    {
+        return Scrub::toNumeric($input);
+    }
+}
+
+if (!function_exists('filter_email')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::email()
+     */
+    function filter_email(string $input): string
+    {
+        return Scrub::email($input);
+    }
+}
+
+if (!function_exists('encode')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::encode()
+     */
+    function encode(string $input, string $encoding = 'UTF-8'): string
+    {
+        return Scrub::encode($input, $encoding);
+    }
+}
+
+if (!function_exists('strip_whitespace')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::stripWhitespace()
+     */
+    function strip_whitespace(string $input): string
+    {
+        return Scrub::stripWhitespace($input);
+    }
+}
+
+if (!function_exists('filter_slug')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::slug()
+     */
+    function filter_slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): string
+    {
+        return Scrub::slug($slug, $separators, $maxLength);
     }
 }
 
@@ -71,6 +131,16 @@ if (!function_exists('is_url')) {
     function is_url(string $url): bool
     {
         return Valid::url($url);
+    }
+}
+
+if (!function_exists('is_slug')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::slug()
+     */
+    function is_slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): bool
+    {
+        return Valid::slug($slug, $separators, $maxLength);
     }
 }
 

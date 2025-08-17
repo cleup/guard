@@ -226,7 +226,7 @@ $isError = $validator->hasError('field.path') // true
 - `values:value1|value2|value3` - Field must be one of the specified values
 - `min:<number>` - The minimum value depends on the data type.
 - `max:<number>` - The maximum value depends on the data type.
-- And other validation options from the `Cleup\Guard\Purifier\Utils\Valid` utility: `email`, `url`, `allowedProtocol`, `allowedHost` `domain`, `ip`, `phone`, `dateFormat`, `notEmpty`, `hexColor`, `rgbaColor`, `rgbColor`, `hslColor`, `hslaColor`, `cssColor`, `latin`, `positiveNumber`, `negativeNumber`, `even`, `odd`, `leapYear`, `futureDate`, `pastDate`, `today`, `strongPassword`, `palindrome`, `romanNumeral`, `macAddress`, `json`, `containsEmoji`, `bitcoinAddress`, `maxLength`, `minLength`
+- And other validation options from the `Cleup\Guard\Purifier\Utils\Valid` utility: `email`, `url`, `allowedProtocol`, `allowedHost` `domain`, `ip`, `phone`, `dateFormat`, `notEmpty`, `hexColor`, `rgbaColor`, `rgbColor`, `hslColor`, `hslaColor`, `cssColor`, `latin`, `positiveNumber`, `negativeNumber`, `even`, `odd`, `leapYear`, `futureDate`, `pastDate`, `today`, `strongPassword`, `palindrome`, `romanNumeral`, `macAddress`, `json`, `containsEmoji`, `bitcoinAddress`, `maxLength`, `minLength`, `slug`
 
 #### Array Rules
 
@@ -241,10 +241,12 @@ $isError = $validator->hasError('field.path') // true
 
 #### Method Reference
 
-- `validate(array $data)`: bool - Validate data against rules, returns true if valid
-- `getErrors()`: array - Get validation errors after failed validation
-- `getFirstError(string $key)`: array - Gets the first error message for a specific field
-- `hasError(string $key)`: bool - Checks if a specific field has any validation errors
-- `get()`: array - Get verified data after validation
+- `validate(array $data):bool` - Validate data against rules, returns true if valid
+- `getErrors():array` - Get validation errors after failed validation
+- `getFirstError(string $key):array` - Gets the first error message for a specific field
+- `hasError(string $key):bool` - Checks if a specific field has any validation errors
+- `getAll():array` - Get verified data after validation
+- `get(string $key, mixed $default = null): mixed` - Get a verified key value
+- `getUnsecureData(): array` -  Get non-secure data
 
 This documentation covers the key aspects of the Validation class while maintaining a similar structure and style to the Sanitizer documentation.

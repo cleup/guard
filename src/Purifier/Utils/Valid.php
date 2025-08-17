@@ -603,4 +603,60 @@ class Valid
     {
         return mb_strlen(strval($value), 'UTF-8') >= $length;
     }
+
+    /**
+     * Validates if a string is a properly formatted slug (URL-friendly string)
+     * 
+     * @param string $slug The string to validate as a slug
+     * @param string|array $separators Allowed separators (default: ['-', '_'])
+     * @param int $maxLength Maximum allowed length (0 for no limit)
+     * @return bool
+     */
+    public static function slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): bool
+    {
+        $separators = is_array($separators) ? $separators : [$separators];
+        $separators = array_filter($separators);
+
+        if ($maxLength > 0 && mb_strlen($slug) > $maxLength) {
+            return false;
+        }
+
+        $separatorsPattern = '';
+
+        foreach ($separators as $sep) {
+            $separatorsPattern .= preg_quote($sep, '/');
+        }
+
+        $pattern = '/^[a-z0-9' . $separatorsPattern . ']+$/';
+        if (!preg_match($pattern, $slug)) {
+            return false;
+        }
+
+        if (count($separators) > 1) {
+            $separatorsPairs = [];
+            foreach ($separators as $sep1) {
+                foreach ($separators as $sep2) {
+                    if ($sep1 !== $sep2) {
+                        $separatorsPairs[] = preg_quote($sep1, '/') . preg_quote($sep2, '/');
+                    }
+                }
+            }
+            $mixedPattern = '/(' . implode('|', $separatorsPairs) . ')/';
+            if (preg_match($mixedPattern, $slug)) {
+                return false;
+            }
+        }
+
+        foreach ($separators as $sep) {
+            if (str_contains($slug, $sep . $sep)) {
+                return false;
+            }
+
+            if (str_starts_with($slug, $sep) || str_ends_with($slug, $sep)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

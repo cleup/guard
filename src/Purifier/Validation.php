@@ -2,6 +2,8 @@
 
 namespace Cleup\Guard\Purifier;
 
+use Cleup\Helpers\Arr;
+
 class Validation extends Ruleset
 {
     /**
@@ -201,7 +203,8 @@ class Validation extends Ruleset
                 'containsEmoji'    => 'The value does not contain emojis',
                 'bitcoinAddress'   => 'The Bitcoin address does not match the required format.',
                 'maxLength'        => 'The value is too high.',
-                'minLength'        => 'The value is too small'
+                'minLength'        => 'The value is too small',
+                'slug'             => 'The slug has an invalid format'
             ];
 
             foreach ($verifyUtils as $utilName => $utilMessage) {
@@ -412,5 +415,37 @@ class Validation extends Ruleset
     public function hasError(string $key): bool
     {
         return isset($this->errors[$key]);
+    }
+
+    /**
+     * Get non-secure data
+     * 
+     * @return array
+     */
+    public function getUnsecureData(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * Get all the verified data
+     * 
+     * @return array
+     */
+    public function getAll(): array
+    {
+        return array_intersect_key($this->data, $this->rules);
+    }
+
+    /**
+     * Get a verified key value
+     * 
+     * @param string $key - Data key
+     * @param mixed $default - Default value
+     * @return mixed
+     */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        return Arr::get($key, $this->getAll(), $default);
     }
 }

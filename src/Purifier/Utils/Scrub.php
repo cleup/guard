@@ -370,6 +370,7 @@ class Scrub
      * @param string $after Suffix if truncated
      * @param string $before Prefix if truncated
      * @param bool $reverse Truncate from end if true
+     * @param bool $preСlean Pre-cleaning and formatting
      * @return string Processed text
      */
     public static function truncate(
@@ -377,9 +378,12 @@ class Scrub
         int|array $characters = 15,
         string $after = "",
         string $before = "",
-        bool $reverse = false
+        bool $reverse = false,
+        bool $preСlean = false
     ): string {
-        $text = static::text($text);
+        if ($preСlean)
+            $text = static::text($text);
+
         $length = mb_strlen($text);
 
         // Extract offset and length from array or use defaults

@@ -102,7 +102,8 @@ if (!function_exists('truncate')) {
         int|array $characters = 15,
         string $after = "",
         string $before = "",
-        bool $reverse = false
+        bool $reverse = false,
+        bool $preСlean = false,
     ): string {
         return Scrub::truncate(
             $text,

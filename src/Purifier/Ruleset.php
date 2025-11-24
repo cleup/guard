@@ -174,10 +174,10 @@ class Ruleset
                 return is_array($value);
             case 'int':
             case 'integer':
-                return filter_var($value, FILTER_VALIDATE_INT) !== false;
+                return is_int($value);
             case 'float':
             case 'floating':
-                return filter_var($value, FILTER_VALIDATE_FLOAT) !== false;
+                return is_float($value);
             case 'number':
             case 'numeric':
                 return is_numeric($value);

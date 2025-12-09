@@ -57,6 +57,11 @@ $data = [
 $sanitizer = new Sanitizer($rules /*, $strict = true */);
 // Get all processed items.
 $cleanData = $sanitizer->sanitize($data)->getAll();
+// Or
+$cleanData = $sanitizer->sanitize(
+    $data,
+    true, // Throw an exception if the value is null
+)->getAll();
 ```
 
 A method for describing the rules in detail

@@ -33,9 +33,10 @@ class Sanitizer extends Ruleset
      * Sanitizes input data according to defined rules
      * 
      * @param array $data - Input data to sanitize
+     * @param bool $throwIsNull - Throw an exception if the value is null
      * @return self 
      */
-    public function sanitize(array $data): self
+    public function sanitize(array $data, $throwIsNull = false): self
     {
         $this->data = [];
 
@@ -52,7 +53,12 @@ class Sanitizer extends Ruleset
 
                     if (!is_null($preparedDefault))
                         $this->data[$key] = $preparedDefault;
+                    else {
+                        if ($throwIsNull)
+                            throw new \Exception(sprintf('The %s value is null', $key));
+                    }
                 }
+
                 continue;
             }
 
@@ -91,6 +97,15 @@ class Sanitizer extends Ruleset
                         $processedValue = $rule['after']($processedValue, $this);
                     }
 
+                    if (is_null($processedValue)) {
+                        if ($throwIsNull)
+                            throw new \Exception(sprintf('The %s value is null', $key));
+
+                        if ($hasDefault) {
+                            $processedValue = $rule['default'] ?? null;
+                        }
+                    }
+
                     $this->data[$key] = $processedValue;
                 }
             } catch (\InvalidArgumentException $e) {
@@ -99,6 +114,10 @@ class Sanitizer extends Ruleset
 
                     if (!is_null($preparedDefault))
                         $this->data[$key] = $preparedDefault;
+                    else {
+                        if ($throwIsNull)
+                            throw new \Exception(sprintf('The %s value is null', $key));
+                    }
                 }
             }
         }

@@ -20,16 +20,18 @@ class Scrub
      * Sanitizes email address
      * 
      * @param string $input Input email address
-     * @return string 
+     * @return ?string 
      */
-    public static function email(string $input): string
+    public static function email(string $input): ?string
     {
         $input = trim($input);
         $filtered = filter_var($input, FILTER_SANITIZE_EMAIL);
 
-        return filter_var($filtered, FILTER_VALIDATE_EMAIL) !== false
-            ? $filtered
-            : '';
+        if (filter_var($filtered, FILTER_VALIDATE_EMAIL)) {
+            return $filtered;
+        }
+
+        return null;
     }
 
     /**
@@ -39,29 +41,45 @@ class Scrub
      * @param string $encoding Character encoding
      * @return string 
      */
-    public static function encode(string $input, string $encoding = 'UTF-8'): string
-    {
-        return htmlentities($input, ENT_QUOTES | ENT_SUBSTITUTE, $encoding);
+    public static function encode(
+        string $input,
+        string $encoding = 'UTF-8'
+    ): string {
+        return htmlentities(
+            $input,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            $encoding
+        );
     }
 
     /**
      * Validates whether a string is a properly formatted URL
      * 
      * @param string $url The string to validate as a URL
-     * @return string|false
+     * @return ?string
      */
-    public static function url(string $url): string
+    public static function url(string $url): ?string
     {
-        $filter = filter_var($url, FILTER_VALIDATE_URL);
+        $url = trim($url);
 
-        return $filter !== false ? $filter : '';
+        // 1. Фильтрация (удаление недопустимых символов)
+        $filtered = filter_var($url, FILTER_SANITIZE_URL);
+
+        // 2. Валидация
+        $validated = filter_var($filtered, FILTER_VALIDATE_URL);
+
+        if ($validated === false) {
+            return null;
+        }
+
+        return $validated;
     }
 
     /**
      * Removes all non-digit characters from input
      * 
      * @param mixed $input Input value
-     * @return string Digits only
+     * @return string
      */
     public static function digits(mixed $input): string
     {
@@ -72,7 +90,7 @@ class Scrub
      * Strips all whitespace characters from string
      * 
      * @param string $input Input string
-     * @return string String without whitespace
+     * @return string
      */
     public static function stripWhitespace(string $input): string
     {
@@ -83,7 +101,7 @@ class Scrub
      * Normalizes string - trims, removes duplicate spaces, normalizes line breaks
      * 
      * @param string $input Input string
-     * @return string Normalized string
+     * @return string
      */
     public static function normalizeString(string $input): string
     {
@@ -102,8 +120,11 @@ class Scrub
      * @param int $maxLength Maximum length
      * @return string 
      */
-    public static function slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): string
-    {
+    public static function slug(
+        string $slug,
+        string|array $separators = ['-', '_'],
+        int $maxLength = 80
+    ): string {
         $separators = is_array($separators) ? $separators : [$separators];
         $separators = array_unique(array_filter($separators, 'strlen'));
         if (empty($separators)) {
@@ -251,7 +272,6 @@ class Scrub
             $str
         );
 
-
         if ($useUnderscore && $useHyphen) {
             $str = preg_replace(['/_{2,}/', '/-{2,}/'], ['_', '-'], $str);
         } else {
@@ -330,7 +350,6 @@ class Scrub
 
         return '';
     }
-
 
     /**
      * Cleans the input text by removing all HTML tags, special characters, and emojis,

@@ -115,6 +115,61 @@ if (!function_exists('truncate')) {
     }
 }
 
+if (!function_exists('neutralize')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::neutralize()
+     */
+    function neutralize(string $content): string
+    {
+        return Scrub::neutralize($content);
+    }
+}
+
+if (!function_exists('purge_null_bytes')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::purgeNullBytes()
+     */
+    function purge_null_bytes(string $content): string
+    {
+        return Scrub::purgeNullBytes($content);
+    }
+}
+
+if (!function_exists('disarm_protocols')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::disarmProtocols()
+     */
+    function disarm_protocols(string $content): string
+    {
+        return Scrub::disarmProtocols($content);
+    }
+}
+
+if (!function_exists('defuse_unicode_bombs')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::defuseUnicodeBombs()
+     */
+    function defuse_unicode_bombs(string $content, bool $searchEverywhere = false): string
+    {
+        return Scrub::defuseUnicodeBombs($content, $searchEverywhere);
+    }
+}
+
+if (!function_exists('break_long_lines')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Scrub::breakLongLines()
+     */
+    function break_long_lines(
+        string $content,
+        int $detectLength = 10000,
+        int $cutLength = 1000,
+        string $suffix = ''
+    ): string {
+        return Scrub::breakLongLines($content, $detectLength, $cutLength, $suffix);
+    }
+}
+
+
 if (!function_exists('is_email')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::email()
@@ -412,5 +467,105 @@ if (!function_exists('is_bitcoin_address')) {
     function is_bitcoin_address(string $address): bool
     {
         return Valid::bitcoinAddress($address);
+    }
+}
+
+if (!function_exists('is_dangerous')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::dangerous()
+     */
+    function is_dangerous(string $content): bool
+    {
+        return Valid::dangerous($content);
+    }
+}
+
+if (!function_exists('is_safe_chars')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::safeChars()
+     */
+    function is_safe_chars(string $content): bool
+    {
+        return Valid::safeChars($content);
+    }
+}
+
+if (!function_exists('is_null_bytes')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::nullBytes()
+     */
+    function is_null_bytes(string $content): bool
+    {
+        return Valid::nullBytes($content);
+    }
+}
+
+if (!function_exists('is_no_null_bytes')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::noNullBytes()
+     */
+    function is_no_null_bytes(string $content): bool
+    {
+        return Valid::noNullBytes($content);
+    }
+}
+
+if (!function_exists('is_dangerous_protocols')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::dangerousProtocols()
+     */
+    function is_dangerous_protocols(string $content): bool
+    {
+        return Valid::dangerousProtocols($content);
+    }
+}
+
+if (!function_exists('is_safe_protocols')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::safeProtocols()
+     */
+    function is_safe_protocols(string $content): bool
+    {
+        return Valid::safeProtocols($content);
+    }
+}
+
+if (!function_exists('is_unicode_bomb')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::unicodeBomb()
+     */
+    function is_unicode_bomb(string $content, bool $searchEverywhere = false): bool
+    {
+        return Valid::unicodeBomb($content, $searchEverywhere);
+    }
+}
+
+if (!function_exists('is_no_unicode_bomb')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::noUnicodeBomb()
+     */
+    function is_no_unicode_bomb(string $content, bool $searchEverywhere = false): bool
+    {
+        return Valid::noUnicodeBomb($content, $searchEverywhere);
+    }
+}
+
+if (!function_exists('is_long_lines')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::longLines()
+     */
+    function is_long_lines(string $content, int $detectLength = 10000): bool
+    {
+        return Valid::longLines($content, $detectLength);
+    }
+}
+
+if (!function_exists('is_reasonable_line_length')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::reasonableLineLength()
+     */
+    function is_reasonable_line_length(string $content, int $maxLength = 10000): bool
+    {
+        return Valid::reasonableLineLength($content, $maxLength);
     }
 }

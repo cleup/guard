@@ -128,18 +128,26 @@ class Encryption
     }
 
     /**
-     * Encrypts data using AES encryption
+     * Encrypts data of any type using AES encryption
      * 
-     * @param string $data Data to encrypt
+     * @param mixed $data Data to encrypt (any type)
      * @param string $key Encryption key
      * @param string $method Encryption method
-     * @return string|null Encrypted data (base64 encoded) or null on failure
+     * @return string|null Encrypted data (URL-safe base64 encoded) or null on failure
      */
-    public static function encrypt(string $data, string $key, string $method = 'AES-256-GCM'): ?string
+    public static function encrypt($data, string $key, string $method = 'AES-256-GCM'): ?string
     {
+        // Check if OpenSSL extension is installed
+        if (!extension_loaded('openssl')) {
+            throw new \RuntimeException('OpenSSL extension is not installed or enabled');
+        }
+
         if (!in_array($method, self::$cipherMethods)) {
             return null;
         }
+
+        // Serialize data to preserve type
+        $serializedData = serialize($data);
 
         $ivLength = openssl_cipher_iv_length($method);
         if ($ivLength === false) {
@@ -152,44 +160,61 @@ class Encryption
             return null;
         }
 
-        $key = hash('sha256', $key, true);
-        if ($key === false) {
+        $hashedKey = hash('sha256', $key, true);
+        if ($hashedKey === false) {
             return null;
         }
 
         $tag = '';
         $options = OPENSSL_RAW_DATA;
-
-        $encrypted = openssl_encrypt($data, $method, $key, $options, $iv, $tag);
+        $encrypted = openssl_encrypt($serializedData, $method, $hashedKey, $options, $iv, $tag);
 
         if ($encrypted === false) {
             return null;
         }
 
+        // Prepare encrypted string based on method
         if (strpos($method, 'GCM') !== false) {
-            return base64_encode($iv . $tag . $encrypted);
+            $result = base64_encode($iv . $tag . $encrypted);
+        } else {
+            $result = base64_encode($iv . $encrypted);
         }
 
-        return base64_encode($iv . $encrypted);
+        // Make URL-safe (remove problematic characters)
+        return rtrim(strtr($result, '+/=', '-_,'), '_,');
     }
 
     /**
      * Decrypts data encrypted with encrypt() method
      * 
-     * @param string $encryptedData Encrypted data (base64 encoded)
+     * @param string $encryptedData Encrypted data (URL-safe base64 encoded)
      * @param string $key Decryption key
      * @param string $method Encryption method used
-     * @return string|null Decrypted data or null on failure
+     * @return mixed|null Original data with preserved type or null on failure
      */
-    public static function decrypt(string $encryptedData, string $key, string $method = 'AES-256-GCM'): ?string
+    public static function decrypt(string $encryptedData, string $key, string $method = 'AES-256-GCM'): mixed
     {
-        $data = base64_decode($encryptedData);
+        // Check if OpenSSL extension is installed
+        if (!extension_loaded('openssl')) {
+            throw new \RuntimeException('OpenSSL extension is not installed or enabled');
+        }
+
+        // Convert from URL-safe format
+        $data = strtr($encryptedData, '-_,', '+/=');
+
+        // Add padding if needed
+        $padding = strlen($data) % 4;
+        if ($padding > 0) {
+            $data .= str_repeat('=', 4 - $padding);
+        }
+
+        $data = base64_decode($data);
         if ($data === false) {
             return null;
         }
 
-        $key = hash('sha256', $key, true);
-        if ($key === false) {
+        $hashedKey = hash('sha256', $key, true);
+        if ($hashedKey === false) {
             return null;
         }
 
@@ -214,19 +239,20 @@ class Encryption
             $tag = substr($data, $ivLength, $tagLength);
             $encrypted = substr($data, $ivLength + $tagLength);
 
-            $decrypted = openssl_decrypt($encrypted, $method, $key, $options, $iv, $tag);
+            $decrypted = openssl_decrypt($encrypted, $method, $hashedKey, $options, $iv, $tag);
         } else {
             $iv = substr($data, 0, $ivLength);
             $encrypted = substr($data, $ivLength);
 
-            $decrypted = openssl_decrypt($encrypted, $method, $key, $options, $iv);
+            $decrypted = openssl_decrypt($encrypted, $method, $hashedKey, $options, $iv);
         }
 
         if ($decrypted === false) {
             return null;
         }
 
-        return $decrypted;
+        // Deserialize to restore original data type
+        return unserialize($decrypted);
     }
 
     /**
@@ -255,7 +281,7 @@ class Encryption
     public static function createHmac(string $data, string $key, string $algo = 'sha256'): ?string
     {
         $result = hash_hmac($algo, $data, $key);
-        
+
         return $result !== false ? $result : null;
     }
 

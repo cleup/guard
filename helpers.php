@@ -17,7 +17,7 @@ if (!function_exists('filter_url')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::url()
      */
-    function filter_url(string $input): mixed
+    function filter_url(string $input): ?string
     {
         return Scrub::url($input);
     }
@@ -57,7 +57,7 @@ if (!function_exists('filter_email')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::email()
      */
-    function filter_email(string $input): string
+    function filter_email(string $input): ?string
     {
         return Scrub::email($input);
     }
@@ -87,8 +87,11 @@ if (!function_exists('filter_slug')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::slug()
      */
-    function filter_slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): string
-    {
+    function filter_slug(
+        string $slug,
+        string|array $separators = ['-', '_'],
+        int $maxLength = 80
+    ): string {
         return Scrub::slug($slug, $separators, $maxLength);
     }
 }
@@ -110,7 +113,8 @@ if (!function_exists('truncate')) {
             $characters,
             $after,
             $before,
-            $reverse
+            $reverse,
+            $preСlean
         );
     }
 }
@@ -169,7 +173,6 @@ if (!function_exists('break_long_lines')) {
     }
 }
 
-
 if (!function_exists('is_email')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::email()
@@ -194,8 +197,11 @@ if (!function_exists('is_slug')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::slug()
      */
-    function is_slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): bool
-    {
+    function is_slug(
+        string $slug,
+        string|array $separators = ['-', '_'],
+        int $maxLength = 80
+    ): bool {
         return Valid::slug($slug, $separators, $maxLength);
     }
 }

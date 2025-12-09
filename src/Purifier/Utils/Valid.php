@@ -612,8 +612,11 @@ class Valid
      * @param int $maxLength Maximum allowed length (0 for no limit)
      * @return bool
      */
-    public static function slug(string $slug, string|array $separators = ['-', '_'], int $maxLength = 80): bool
-    {
+    public static function slug(
+        string $slug,
+        string|array $separators = ['-', '_'],
+        int $maxLength = 80
+    ): bool {
         $separators = is_array($separators) ? $separators : [$separators];
         $separators = array_filter($separators);
 
@@ -658,5 +661,156 @@ class Valid
         }
 
         return true;
+    }
+
+    /**
+     * Quick check for threats in content
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function dangerous(string $content): bool
+    {
+        return self::nullBytes($content)
+            || self::unicodeBomb($content)
+            || self::longLines($content);
+    }
+
+    /**
+     * Check if content is safe (reverse of dangerous())
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function safeChars(string $content): bool
+    {
+        return !self::dangerous($content);
+    }
+
+    /**
+     * Check for null bytes and control characters
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function nullBytes(string $content): bool
+    {
+        return preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $content);
+    }
+
+    /**
+     * Check if content is free from null bytes and control characters (reverse of nullBytes())
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function noNullBytes(string $content): bool
+    {
+        return !self::nullBytes($content);
+    }
+
+    /**
+     * Check for dangerous protocols
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function dangerousProtocols(string $content): bool
+    {
+        $patterns = [
+            '/php:\/\/(filter|input|glob|expect|zip|data)/i',
+            '/phar:\/\//i',
+            '/\b(file|ftp|gopher|jar|ldap|ssh2?):\/\//i',
+            '/data:(text\/(html|javascript|vbscript)|application\/(x-php|javascript))/i',
+            '/\b(javascript|vbscript|data|mocha):/i',
+            '/<!ENTITY\s+/i',
+            '/<!DOCTYPE\s+/i',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if content uses only safe protocols (reverse of dangerousProtocols())
+     * 
+     * @param string $content Content to check
+     * @return bool
+     */
+    public static function safeProtocols(string $content): bool
+    {
+        return !self::dangerousProtocols($content);
+    }
+
+    /**
+     * Detect unicode bombs (excessive encoding ratio)
+     * 
+     * @param string $content Content to check
+     * @param bool $searchEverywhere Search everywhere
+     * @return bool
+     */
+    public static function unicodeBomb(
+        string $content,
+        bool $searchEverywhere = false
+    ): bool {
+        return $searchEverywhere
+            ? strpos($content, "\xEF\xBB\xBF") !== false
+            :  substr($content, 0, 3) === "\xEF\xBB\xBF";
+    }
+
+    /**
+     * Check if content is free from unicode BOM (reverse of unicodeBomb())
+     * 
+     * @param string $content Content to check
+     * @param bool $searchEverywhere Search everywhere
+     * @return bool
+     */
+    public static function noUnicodeBomb(
+        string $content,
+        bool $searchEverywhere = false
+    ): bool {
+        return !self::unicodeBomb($content, $searchEverywhere);
+    }
+
+    /**
+     * Check for excessively long lines
+     * 
+     * @param string $content Content to check
+     * @param int $detectLength Detection threshold (default 10000)
+     * @return bool
+     */
+    public static function longLines(string $content, int $detectLength = 10000): bool
+    {
+        if ($detectLength <= 0) {
+            return false;
+        }
+
+        $lines = explode("\n", $content);
+
+        foreach ($lines as $line) {
+            $line = rtrim($line, "\r");
+            if (strlen($line) >= $detectLength) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if all lines are within acceptable length (reverse of longLines())
+     * 
+     * @param string $content Content to check
+     * @param int $maxLength Maximum allowed line length (default 10000)
+     * @return bool
+     */
+    public static function reasonableLineLength(string $content, int $maxLength = 10000): bool
+    {
+        return !self::longLines($content, $maxLength);
     }
 }

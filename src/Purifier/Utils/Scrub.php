@@ -425,4 +425,110 @@ class Scrub
     {
         return static::text($url);
     }
+
+    /**
+     * Clean content from critical threats
+     * 
+     * @param string $content Input content
+     * @return string
+     */
+    public static function neutralize(string $content): string
+    {
+        $content = self::purgeNullBytes($content);
+        $content = self::defuseUnicodeBombs($content);
+        $content = self::breakLongLines($content);
+
+        return $content;
+    }
+
+    /**
+     * Remove null bytes and control characters
+     * 
+     * @param string $content Input content
+     * @return string 
+     */
+    public static function purgeNullBytes(string $content): string
+    {
+        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content);
+    }
+
+    /**
+     * Disable dangerous protocols in content
+     * 
+     * @param string $content Input content
+     * @return string
+     */
+    public static function disarmProtocols(string $content): string
+    {
+        $replacements = [
+            '/php:\/\/(filter|input|glob|expect|zip|data)/i' => 'php-safe://$1',
+            '/phar:\/\//i' => 'phar-safe://',
+            '/\b(file|ftp|gopher|jar|ldap|ssh2?):\/\//i' => '$1-safe://',
+            '/data:(text\/(html|javascript|vbscript)|application\/(x-php|javascript))/i' => 'data-safe:$1',
+            '/\b(javascript|vbscript|data|mocha):/i' => '$1-safe:',
+            '/<!ENTITY\s+/i' => '&lt;!ENTITY ',
+            '/<!DOCTYPE\s+/i' => '&lt;!DOCTYPE ',
+        ];
+
+        return preg_replace(array_keys($replacements), array_values($replacements), $content);
+    }
+
+    /**
+     * Break excessively long lines without line breaks
+     * 
+     * @param string $content Input content
+     * @param int $detectLength Line length threshold for detection (default 10000)
+     * @param int $cutLength Maximum allowed line length (default 1000)
+     * @param string $suffix Suffix after truncation (default '')
+     * @return string 
+     */
+    public static function breakLongLines(
+        string $content,
+        int $detectLength = 10000,
+        int $cutLength = 1000,
+        string $suffix = ''
+    ): string {
+        if ($detectLength <= 0 || $cutLength <= 0 || $cutLength >= $detectLength) {
+            return $content;
+        }
+
+        $lines = explode("\n", $content);
+        $result = [];
+
+        foreach ($lines as $line) {
+            $line = rtrim($line, "\r");
+
+            if (strlen($line) >= $detectLength) {
+                $result[] = substr($line, 0, $cutLength) . $suffix;
+            } else {
+                $result[] = $line;
+            }
+        }
+
+        return implode("\n", $result);
+    }
+
+    /**
+     * Defuse unicode bombs by truncating excessive content
+     * 
+     * @param string $content Input content
+     * @param bool $searchEverywhere Search everywhere
+     * @return string 
+     */
+    public static function defuseUnicodeBombs(
+        string $content,
+        bool $searchEverywhere = false
+    ): string {
+        if (Valid::unicodeBomb($content, $searchEverywhere)) {
+            if ($searchEverywhere) {
+                return str_replace("\xEF\xBB\xBF", '', $content);
+            } else {
+                return (substr($content, 0, 3) === "\xEF\xBB\xBF")
+                    ? substr($content, 3)
+                    : $content;
+            }
+        }
+
+        return $content;
+    }
 }

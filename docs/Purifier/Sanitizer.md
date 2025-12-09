@@ -69,7 +69,20 @@ $rules = [
         'type' => 'string',
         'text' => true,
         'values' => ['Eduard', 'John', 'Alex'],
-        'default' => 'Unknown'
+        'default' => 'Unknown',
+        'truncate' => [  // Adding handler arguments (always with 2 arguments)
+            15,   // int|array $characters
+            "",    // string $after
+            "",    // string $before
+            false, // bool $reverse 
+            false, // bool $preСlean
+        ]
+        // Or adding handler arguments using the "arguments" parameter
+        'breakLongLines' => [
+            'arguments' => [
+                // ...
+            ]
+         ]
     ],
     //
     'age' => [

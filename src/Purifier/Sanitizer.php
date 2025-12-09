@@ -3,6 +3,7 @@
 namespace Cleup\Guard\Purifier;
 
 use Cleup\Guard\Purifier\Utils\Scrub;
+use Cleup\Helpers\Arr;
 
 class Sanitizer extends Ruleset
 {
@@ -159,17 +160,39 @@ class Sanitizer extends Ruleset
                     'stripWhitespace',
                     'translitCyrillic',
                     'normalizeString',
-                    'truncate'
+                    'truncate',
+                    'neutralize',
+                    'purgeNullBytes',
+                    'disarmProtocols',
+                    'breakLongLines',
+                    'defuseUnicodeBombs'
                 ];
 
                 foreach ($scrubUtils as $utilName) {
                     if (array_key_exists($utilName, $rule)) {
                         $verifyClass = __NAMESPACE__ . "\\Utils\\Scrub";
-                        $arg = null;
                         $args = [$value];
 
-                        if (!is_bool($rule[$utilName]) && !is_array($rule[$utilName])) {
-                            $args[] = $rule[$utilName];
+                        if (
+                            !is_bool($rule[$utilName]) &&
+                            is_array($rule[$utilName])
+                        ) {
+                            $ruleOptions = $rule[$utilName];
+
+                            if (Arr::isList($ruleOptions)) {
+                                foreach ($ruleOptions as $ruleArgument) {
+                                    $args[] = $ruleArgument;
+                                }
+                            } else {
+                                if (
+                                    !empty($ruleOptions['arguments']) &&
+                                    is_array($ruleOptions['arguments'])
+                                ) {
+                                    foreach ($ruleOptions['arguments'] as $ruleArgument) {
+                                        $args[] = $ruleArgument;
+                                    }
+                                }
+                            }
                         }
 
                         if (method_exists($verifyClass, $utilName)) {

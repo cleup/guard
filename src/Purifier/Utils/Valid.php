@@ -549,13 +549,25 @@ class Valid
     /**
      * Checks if a string is a valid JSON.
      *
-     * @param string $json The JSON string to validate.
+     * @param string $json The JSON string to validate
+     * @param bool $allowScalar Whether to allow scalar values (null, numbers, strings)
      * @return bool
+     * @throws \JsonException if JSON_THROW_ON_ERROR is used
      */
-    public static function json(string $json): bool
+    public static function json(string $json, bool $allowScalar = false): bool
     {
-        json_decode($json);
-        return json_last_error() === JSON_ERROR_NONE;
+        if (trim($json) === '') {
+            return false;
+        }
+
+        try {
+            $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+            // Если разрешены скалярные значения или это массив/объект
+            return $allowScalar || is_array($decoded);
+        } catch (\JsonException $e) {
+            return false;
+        }
     }
 
     /**

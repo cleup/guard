@@ -563,7 +563,6 @@ class Valid
         try {
             $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
-            // Если разрешены скалярные значения или это массив/объект
             return $allowScalar || is_array($decoded);
         } catch (\JsonException $e) {
             return false;

@@ -218,17 +218,9 @@ class Validation extends Ruleset
 
                 if (array_key_exists($utilName, $rule)) {
                     $className = __NAMESPACE__ . "\\Utils\\Valid";
-                    $arg = is_array($rule[$utilName])
-                        ? $rule[$utilName]
-                        : (!is_bool($rule[$utilName])
-                            ? $rule[$utilName] : []
-                        );
-
-
                     $args = [$value];
 
                     if (method_exists($className, $utilName)) {
-
                         if (
                             !is_bool($rule[$utilName]) &&
                             is_array($rule[$utilName])
@@ -240,7 +232,6 @@ class Validation extends Ruleset
                                     $args[] = $ruleArgument;
                                 }
                             } else {
-
                                 if (
                                     !empty($ruleOptions['arguments']) &&
                                     is_array($ruleOptions['arguments'])

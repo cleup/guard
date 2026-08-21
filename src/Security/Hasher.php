@@ -20,8 +20,10 @@ class Hasher
      * @param array $options Hashing options
      * @return string|null Hashed password or null on failure
      */
-    public static function hashPassword(string $password, array $options = []): ?string
-    {
+    public static function hashPassword(
+        string $password,
+        array $options = []
+    ): ?string {
         $options = array_merge(self::DEFAULT_OPTIONS, $options);
 
         $hashed = password_hash($password, self::DEFAULT_ALGORITHM, $options);
@@ -35,8 +37,10 @@ class Hasher
      * @param string $hash Hashed password
      * @return bool True if password matches
      */
-    public static function verifyPassword(string $password, string $hash): bool
-    {
+    public static function verifyPassword(
+        string $password,
+        string $hash
+    ): bool {
         return password_verify($password, $hash);
     }
 
@@ -47,8 +51,10 @@ class Hasher
      * @param array $options New options to check against
      * @return bool|null True if password needs rehashing, null on failure
      */
-    public static function needsRehash(string $hash, array $options = []): ?bool
-    {
+    public static function needsRehash(
+        string $hash,
+        array $options = []
+    ): ?bool {
         $options = array_merge(self::DEFAULT_OPTIONS, $options);
 
         $result = password_needs_rehash($hash, self::DEFAULT_ALGORITHM, $options);
@@ -116,8 +122,11 @@ class Hasher
      * @param bool $binary Output in binary format
      * @return string|null Hash value or null on failure
      */
-    public static function hash(string $data, string $algo = 'sha256', bool $binary = false): ?string
-    {
+    public static function hash(
+        string $data,
+        string $algo = 'sha256',
+        bool $binary = false
+    ): ?string {
         $result = hash($algo, $data, $binary);
         return $result !== false ? $result : null;
     }
@@ -131,8 +140,12 @@ class Hasher
      * @param bool $binary Output in binary format
      * @return string|null HMAC hash or null on failure
      */
-    public static function hmac(string $data, string $key, string $algo = 'sha256', bool $binary = false): ?string
-    {
+    public static function hmac(
+        string $data,
+        string $key,
+        string $algo = 'sha256',
+        bool $binary = false
+    ): ?string {
         $result = hash_hmac($algo, $data, $key, $binary);
         return $result !== false ? $result : null;
     }
@@ -146,8 +159,12 @@ class Hasher
      * @param string $algo Hashing algorithm
      * @return bool True if hash is valid
      */
-    public static function verifyHmac(string $data, string $hash, string $key, string $algo = 'sha256'): bool
-    {
+    public static function verifyHmac(
+        string $data,
+        string $hash,
+        string $key,
+        string $algo = 'sha256'
+    ): bool {
         $calculatedHash = self::hmac($data, $key, $algo);
         if ($calculatedHash === null) {
             return false;

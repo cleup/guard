@@ -21,10 +21,15 @@ class Valid
      * Validates if a string is a properly formatted URL.
      *
      * @param string $url The URL string to validate
+     * @param bool $requireScheme Whether to require a scheme (http/https) in the URL
      * @return bool
      */
-    public static function url(string $url): bool
+    public static function url(string $url, bool $requireScheme = true): bool
     {
+        if ($requireScheme && !preg_match('~^https?://~i', $url)) {
+            return false;
+        }
+
         return filter_var($url, FILTER_VALIDATE_URL) !== false;
     }
 
@@ -63,8 +68,9 @@ class Valid
      */
     public static function allowedHost(string $url, array|string $allowedHosts): bool
     {
-        if (is_string($allowedHosts))
+        if (is_string($allowedHosts)) {
             $allowedHosts = [$allowedHosts];
+        }
 
         $parsed = parse_url($url);
 
@@ -76,10 +82,11 @@ class Valid
         $allowedHosts = array_map('strtolower', $allowedHosts);
 
         foreach ($allowedHosts as $allowedHost) {
-            if (
-                $host === $allowedHost ||
-                (str_ends_with($host, '.' . $allowedHost) && $host !== $allowedHost)
-            ) {
+            if ($host === $allowedHost) {
+                return true;
+            }
+
+            if (str_ends_with($host, '.' . $allowedHost) && $host !== $allowedHost) {
                 return true;
             }
         }
@@ -99,7 +106,8 @@ class Valid
             return false;
         }
 
-        if (preg_match('//u', $domain)) {
+        // Конвертируем IDN только если есть не-ASCII символы
+        if (preg_match('/[^\x00-\x7F]/', $domain)) {
             $converted = idn_to_ascii(
                 $domain,
                 IDNA_NONTRANSITIONAL_TO_ASCII,
@@ -120,7 +128,7 @@ class Valid
     }
 
     /**
-     * Validates if string is a properly formatted IPv4 or IPv6 address.
+     * Validates if string is a properly formatted IP address (IPv4 or IPv6).
      *
      * @param string $ip The IP address string to validate
      * @return bool
@@ -128,6 +136,28 @@ class Valid
     public static function ip(string $ip): bool
     {
         return filter_var($ip, FILTER_VALIDATE_IP) !== false;
+    }
+
+    /**
+     * Validates if string is a properly formatted IPv4 address.
+     *
+     * @param string $ip The IPv4 address string to validate
+     * @return bool
+     */
+    public static function ipv4(string $ip): bool
+    {
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+    }
+
+    /**
+     * Validates if string is a properly formatted IPv6 address.
+     *
+     * @param string $ip The IPv6 address string to validate
+     * @return bool
+     */
+    public static function ipv6(string $ip): bool
+    {
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
     }
 
     /**
@@ -139,11 +169,20 @@ class Valid
      */
     public static function phone(string $phone): bool
     {
+        // Убираем все нецифровые символы для анализа
         $digitsOnly = preg_replace('/[^0-9]/', '', $phone);
         $digitLength = strlen($digitsOnly);
         $hasPlus = str_starts_with($phone, '+');
 
-        if ($digitLength < 7 || ($hasPlus && $digitLength > 15) || (!$hasPlus && $digitLength > 11)) {
+        if ($digitLength < 7 || $digitLength > 15) {
+            return false;
+        }
+
+        if ($hasPlus && $digitLength > 15) {
+            return false;
+        }
+
+        if (!$hasPlus && $digitLength > 11) {
             return false;
         }
 
@@ -155,23 +194,14 @@ class Valid
             return false;
         }
 
-        if (preg_match('/^(\+7|7|8)/', $phone) && $digitLength !== 11) {
-            return false;
-        }
-
         $patterns = [
-            // +CCC XXX XXX-XXXX
-            '/^\+\d{1,3}(?:[ \-]?\d{2,5}){2,4}$/',
-
-            // Russian (+7|8)
+            '/^\+\d{1,3}(?:[\s\-]?\d{2,5}){2,4}$/',
             '/^\+7[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/',
             '/^8[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/',
             '/^7\d{10}$/',
-
-            // 7-11
-            '/^\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/',             // 800 123-45
-            '/^\(?\d{3,5}\)?[\s\-]?\d{2,4}[\s\-]?\d{2,4}$/', // (812) 123-45-67
-            '/^\d{7,11}$/'                                   // 12345678901
+            '/^\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/',
+            '/^\(?\d{3,5}\)?[\s\-]?\d{2,4}[\s\-]?\d{2,4}$/',
+            '/^\d{7,11}$/'
         ];
 
         foreach ($patterns as $pattern) {
@@ -197,14 +227,26 @@ class Valid
     }
 
     /**
-     * Checks if string is not empty (after trimming whitespace).
+     * Checks if value is not empty (after trimming whitespace).
      *
-     * @param string $value The string to check
+     * @param mixed $value The value to check
      * @return bool
      */
-    public static function notEmpty(string $value): bool
+    public static function notEmpty(mixed $value): bool
     {
-        return trim($value) !== '';
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_string($value)) {
+            return trim($value) !== '';
+        }
+
+        if (is_array($value)) {
+            return !empty($value);
+        }
+
+        return $value !== '';
     }
 
     /**
@@ -221,42 +263,6 @@ class Valid
     public static function hexColor(string $value): bool
     {
         return preg_match('/^#([a-f0-9]{3,4}|[a-f0-9]{6}|[a-f0-9]{8})$/i', $value) === 1;
-    }
-
-    /**
-     * Validates RGBA color format with transparency.
-     * 
-     * Supports following formats:
-     * - rgba(255, 255, 255, 1)
-     * - rgba(255, 255, 255, 0.5)
-     * - rgba(100%, 100%, 100%, 0.5)
-     * - rgba(255 255 255 / 0.5) - CSS Color Level 4 syntax
-     * - With optional spaces after commas
-     *
-     * @param string $value The RGBA color string to validate
-     * @return bool 
-     */
-    public static function rgbaColor(string $value): bool
-    {
-        // Classic format: rgba(255, 255, 255, 0.5)
-        $classicPattern = '/^rgba\(\s*'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
-            . ',\s*'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
-            . ',\s*'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
-            . ',\s*'
-            . '(0|1|0?\.\d+|1\.0|100%|\d{1,2}%)\s*\)$/i';
-
-        // CSS4 format: rgba(255 255 255 / 0.5)
-        $css4Pattern = '/^rgba\(\s*'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
-            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
-            . '\/\s*'
-            . '(0|1|0?\.\d+|1\.0|100%|\d{1,2}%)\s*\)$/i';
-
-        return preg_match($classicPattern, $value) || preg_match($css4Pattern, $value);
     }
 
     /**
@@ -280,13 +286,46 @@ class Valid
             . ',\s*'
             . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*\)$/i';
 
-        // CSS4 format: rgb(255 255 255)
         $css4Pattern = '/^rgb\(\s*'
             . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
             . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
             . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*\)$/i';
 
-        return preg_match($classicPattern, $value) || preg_match($css4Pattern, $value);
+        return preg_match($classicPattern, $value) === 1 || preg_match($css4Pattern, $value) === 1;
+    }
+
+    /**
+     * Validates RGBA color format with transparency.
+     * 
+     * Supports following formats:
+     * - rgba(255, 255, 255, 1)
+     * - rgba(255, 255, 255, 0.5)
+     * - rgba(255, 255, 255, .5)
+     * - rgba(100%, 100%, 100%, 0.5)
+     * - rgba(255 255 255 / 0.5) - CSS Color Level 4 syntax
+     *
+     * @param string $value The RGBA color string to validate
+     * @return bool 
+     */
+    public static function rgbaColor(string $value): bool
+    {
+        $classicPattern = '/^rgba\(\s*'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
+            . ',\s*'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
+            . ',\s*'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
+            . ',\s*'
+            . '(0|1|0?\.\d+|\.\d+|1\.0|100%|\d{1,2}%)\s*\)$/i';
+
+        $css4Pattern = '/^rgba\(\s*'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s+'
+            . '(25[0-5]|2[0-4]\d|1\d{2}|\d{1,2}|100%|\d{1,2}%)\s*'
+            . '\/\s*'
+            . '(0|1|0?\.\d+|\.\d+|1\.0|100%|\d{1,2}%)\s*\)$/i';
+
+        return preg_match($classicPattern, $value) === 1 || preg_match($css4Pattern, $value) === 1;
     }
 
     /**
@@ -369,14 +408,37 @@ class Valid
     }
 
     /**
-     * Checks if a string contains only Latin letters (no Cyrillic or other alphabets).
+     * Checks if a string contains only Latin letters (with optional spaces, numbers, and punctuation).
      *
      * @param string $value The string to check.
+     * @param bool $allowSpaces Whether to allow spaces (default: false)
+     * @param bool $allowNumbers Whether to allow numbers (default: false)
+     * @param bool $allowPunctuation Whether to allow punctuation (default: false)
      * @return bool
      */
-    public static function latin(string $value): bool
-    {
-        return preg_match('/^[a-zA-Z]+$/', $value) === 1;
+    public static function latin(
+        string $value,
+        bool $allowSpaces = false,
+        bool $allowNumbers = false,
+        bool $allowPunctuation = false
+    ): bool {
+        $pattern = '/^[a-zA-Z';
+
+        if ($allowSpaces) {
+            $pattern .= '\s';
+        }
+
+        if ($allowNumbers) {
+            $pattern .= '0-9';
+        }
+
+        if ($allowPunctuation) {
+            $pattern .= '.,!?;:()\'"\-–—';
+        }
+
+        $pattern .= ']+$/';
+
+        return preg_match($pattern, $value) === 1;
     }
 
     /**
@@ -385,9 +447,9 @@ class Valid
      * @param int|float $number The number to check.
      * @return bool
      */
-    public static function positiveNumber($number): bool
+    public static function positiveNumber(int|float $number): bool
     {
-        return $number > 0;
+        return is_numeric($number) && $number > 0;
     }
 
     /**
@@ -396,9 +458,9 @@ class Valid
      * @param int|float $number The number to check.
      * @return bool
      */
-    public static function negativeNumber($number): bool
+    public static function negativeNumber(int|float $number): bool
     {
-        return $number < 0;
+        return is_numeric($number) && $number < 0;
     }
 
     /**
@@ -431,7 +493,12 @@ class Valid
      */
     public static function leapYear(int $year): bool
     {
-        return ($year % 4 === 0 && $year % 100 !== 0) || ($year % 400 === 0);
+        if ($year <= 0) {
+            return false;
+        }
+
+        return ($year % 4 === 0 && $year % 100 !== 0) ||
+            ($year % 400 === 0);
     }
 
     /**
@@ -442,9 +509,17 @@ class Valid
      */
     public static function futureDate(string $date): bool
     {
-        $dateTime = new DateTime($date);
-        $now = new DateTime();
-        return $dateTime > $now;
+        try {
+            $dateTime = new DateTime($date);
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        if ($dateTime->format('Y-m-d') !== $date) {
+            return false;
+        }
+
+        return $dateTime > new DateTime();
     }
 
     /**
@@ -455,7 +530,17 @@ class Valid
      */
     public static function pastDate(string $date): bool
     {
-        return !self::futureDate($date);
+        try {
+            $dateTime = new DateTime($date);
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        if ($dateTime->format('Y-m-d') !== $date) {
+            return false;
+        }
+
+        return $dateTime < new DateTime();
     }
 
     /**
@@ -466,7 +551,12 @@ class Valid
      */
     public static function today(string $date): bool
     {
-        $dateTime = new DateTime($date);
+        try {
+            $dateTime = new DateTime($date);
+        } catch (\Exception $e) {
+            return false;
+        }
+
         $now = new DateTime();
         return $dateTime->format('Y-m-d') === $now->format('Y-m-d');
     }
@@ -474,7 +564,8 @@ class Valid
     /**
      * Checks the password complexity:
      * - Minimum of 8 characters
-     * - At least 1 letter (Latin or Cyrillic)
+     * - At least 1 uppercase letter
+     * - At least 1 lowercase letter
      * - At least 1 digit
      * - At least 1 special character
      * - Cyrillic alphabet can be included (optional)
@@ -483,9 +574,11 @@ class Valid
      * @param bool $allowCyrillic To allow Cyrillic (true/false).
      * @return bool
      */
-    public static function strongPassword(string $password, bool $allowCyrillic = true): bool
-    {
-        if (strlen($password) < 8) {
+    public static function strongPassword(
+        string $password,
+        bool $allowCyrillic = true
+    ): bool {
+        if (mb_strlen($password) < 8) {
             return false;
         }
 
@@ -493,11 +586,11 @@ class Valid
             return false;
         }
 
-        $hasLetter = $allowCyrillic
-            ? preg_match('/[A-Za-zА-Яа-я]/u', $password)
-            : preg_match('/[A-Za-z]/', $password);
+        if (!preg_match('/[A-ZА-ЯЁ]/u', $password)) {
+            return false;
+        }
 
-        if (!$hasLetter) {
+        if (!preg_match('/[a-zа-яё]/u', $password)) {
             return false;
         }
 
@@ -505,7 +598,7 @@ class Valid
             return false;
         }
 
-        if (!preg_match('/[\W_]/u', $password)) {
+        if (!preg_match('/[^A-Za-z0-9А-Яа-яЁё\s]/u', $password)) {
             return false;
         }
 
@@ -520,50 +613,75 @@ class Valid
      */
     public static function palindrome(string $value): bool
     {
-        $cleaned = strtolower(preg_replace('/[^a-z0-9]/i', '', $value));
-        return $cleaned === strrev($cleaned);
+        $cleaned = mb_strtolower(preg_replace('/[^\p{L}\p{N}]/u', '', $value));
+        $reversed = implode('', array_reverse(mb_str_split($cleaned)));
+
+        return $cleaned !== '' && $cleaned === $reversed;
     }
 
     /**
      * Checks if a string is a valid Roman numeral.
      *
      * @param string $value The string to validate.
+     * @param bool $allowLowercase Whether to allow lowercase roman numerals
      * @return bool
      */
-    public static function romanNumeral(string $value): bool
-    {
-        return preg_match('/^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/', $value) === 1;
+    public static function romanNumeral(
+        string $value,
+        bool $allowLowercase = false
+    ): bool {
+        if ($value === '') {
+            return false;
+        }
+
+        $pattern = '/^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/';
+
+        if ($allowLowercase) {
+            $pattern .= 'i';
+        }
+
+        return preg_match($pattern, $value) === 1;
     }
 
     /**
      * Checks if a string is a valid MAC address.
+     * Supports formats: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX
      *
      * @param string $mac The MAC address to validate.
      * @return bool
      */
     public static function macAddress(string $mac): bool
     {
-        return preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $mac) === 1;
+        if (preg_match('/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/', $mac)) {
+            return true;
+        }
+
+        if (preg_match('/^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$/', $mac)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
      * Checks if a string is a valid JSON.
      *
      * @param string $json The JSON string to validate
-     * @param bool $allowScalar Whether to allow scalar values (null, numbers, strings)
+     * @param bool $allowScalar Whether to allow scalar values (null, numbers, strings, booleans)
      * @return bool
-     * @throws \JsonException if JSON_THROW_ON_ERROR is used
      */
-    public static function json(string $json, bool $allowScalar = false): bool
-    {
-        if (trim($json) === '') {
-            return false;
-        }
-
+    public static function json(
+        string $json,
+        bool $allowScalar = false
+    ): bool {
         try {
             $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
 
-            return $allowScalar || is_array($decoded);
+            if ($allowScalar) {
+                return !is_array($decoded);
+            }
+
+            return is_array($decoded);
         } catch (\JsonException $e) {
             return false;
         }
@@ -577,41 +695,76 @@ class Valid
      */
     public static function containsEmoji(string $text): bool
     {
-        return preg_match('/[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}]/u', $text) === 1;
+        return preg_match(
+            '/[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE00}-\x{FE0F}\x{1F1E6}-\x{1F1FF}]/u',
+            $text
+        ) === 1;
     }
 
     /**
      * Checks if a string is a valid Bitcoin address.
+     * Supports legacy (P2PKH), SegWit (P2SH), and Bech32 formats.
      *
      * @param string $address The Bitcoin address to validate.
      * @return bool
      */
     public static function bitcoinAddress(string $address): bool
     {
-        return preg_match('/^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/', $address) === 1;
+        // Legacy P2PKH (1...)
+        if (preg_match('/^1[a-km-zA-HJ-NP-Z1-9]{25,34}$/', $address)) {
+            return true;
+        }
+
+        // SegWit P2SH (3...)
+        if (preg_match('/^3[a-km-zA-HJ-NP-Z1-9]{25,34}$/', $address)) {
+            return true;
+        }
+
+        // Bech32 (bc1...)
+        if (preg_match('/^bc1[a-z0-9]{25,90}$/i', $address)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
      * Checks if the value length does not exceed the specified maximum length
      * 
-     * @param int|float|string $value - The value to validate (can be number or string)
+     * @param mixed $value - The value to validate
      * @param int $length - Maximum allowed length
      * @return bool
      */
-    public static function maxLength(int|float|string $value, int $length): bool
+    public static function maxLength(mixed $value, int $length): bool
     {
+        if ($value === null) {
+            return true;
+        }
+
+        if (is_array($value)) {
+            return count($value) <= $length;
+        }
+
         return mb_strlen(strval($value), 'UTF-8') <= $length;
     }
 
     /**
      * Checks if the value length meets or exceeds the specified minimum length
      * 
-     * @param int|float|string $value - The value to validate (can be number or string)
+     * @param mixed $value - The value to validate
      * @param int $length - Minimum required length
      * @return bool
      */
-    public static function minLength(int|float|string $value, int $length): bool
+    public static function minLength(mixed $value, int $length): bool
     {
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_array($value)) {
+            return count($value) >= $length;
+        }
+
         return mb_strlen(strval($value), 'UTF-8') >= $length;
     }
 
@@ -678,24 +831,31 @@ class Valid
      * Quick check for threats in content
      * 
      * @param string $content Content to check
+     * @param int $maxLength Maximum safe content length (default 100000)
      * @return bool
      */
-    public static function dangerous(string $content): bool
-    {
+    public static function dangerous(
+        string $content,
+        int $maxLength = 100000
+    ): bool {
         return self::nullBytes($content)
             || self::unicodeBomb($content)
-            || self::longLines($content);
+            || self::longLines($content)
+            || strlen($content) > $maxLength;
     }
 
     /**
      * Check if content is safe (reverse of dangerous())
      * 
      * @param string $content Content to check
+     * @param int $maxLength Maximum safe content length (default 100000)
      * @return bool
      */
-    public static function safeChars(string $content): bool
-    {
-        return !self::dangerous($content);
+    public static function safeChars(
+        string $content,
+        int $maxLength = 100000
+    ): bool {
+        return !self::dangerous($content, $maxLength);
     }
 
     /**
@@ -706,7 +866,7 @@ class Valid
      */
     public static function nullBytes(string $content): bool
     {
-        return preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $content);
+        return preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $content) === 1;
     }
 
     /**
@@ -729,17 +889,17 @@ class Valid
     public static function dangerousProtocols(string $content): bool
     {
         $patterns = [
-            '/php:\/\/(filter|input|glob|expect|zip|data)/i',
+            '/php:\/\/(filter|input|glob|expect|zip|data|phar|temp|memory)/i',
             '/phar:\/\//i',
-            '/\b(file|ftp|gopher|jar|ldap|ssh2?):\/\//i',
+            '/\b(file|ftp|gopher|jar|ldap|ssh2?|telnet|dict|zlib|ogg|rar|expect):\/\//i',
             '/data:(text\/(html|javascript|vbscript)|application\/(x-php|javascript))/i',
-            '/\b(javascript|vbscript|data|mocha):/i',
+            '/\b(javascript|vbscript|data|mocha|livescript):/i',
             '/<!ENTITY\s+/i',
             '/<!DOCTYPE\s+/i',
         ];
 
         foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $content)) {
+            if (preg_match($pattern, $content) === 1) {
                 return true;
             }
         }
@@ -769,9 +929,11 @@ class Valid
         string $content,
         bool $searchEverywhere = false
     ): bool {
-        return $searchEverywhere
-            ? strpos($content, "\xEF\xBB\xBF") !== false
-            :  substr($content, 0, 3) === "\xEF\xBB\xBF";
+        if ($searchEverywhere) {
+            return strpos($content, "\xEF\xBB\xBF") !== false;
+        }
+
+        return substr($content, 0, 3) === "\xEF\xBB\xBF";
     }
 
     /**
@@ -805,7 +967,7 @@ class Valid
 
         foreach ($lines as $line) {
             $line = rtrim($line, "\r");
-            if (strlen($line) >= $detectLength) {
+            if (mb_strlen($line, 'UTF-8') >= $detectLength) {
                 return true;
             }
         }

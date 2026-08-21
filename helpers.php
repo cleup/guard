@@ -7,9 +7,11 @@ if (!function_exists('escape')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::escape()
      */
-    function escape(string $input, string $chaset = 'UTF-8'): string
-    {
-        return Scrub::escape($input, $chaset);
+    function escape(
+        string $input,
+        ?string $charset = 'UTF-8'
+    ): string {
+        return Scrub::escape($input, $charset);
     }
 }
 
@@ -37,7 +39,7 @@ if (!function_exists('to_string')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::toString()
      */
-    function to_string(mixed $input): mixed
+    function to_string(mixed $input): string
     {
         return Scrub::toString($input);
     }
@@ -47,7 +49,7 @@ if (!function_exists('to_numeric')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::toNumeric()
      */
-    function to_numeric(mixed $input): mixed
+    function to_numeric(mixed $input): int|float
     {
         return Scrub::toNumeric($input);
     }
@@ -67,8 +69,10 @@ if (!function_exists('encode')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::encode()
      */
-    function encode(string $input, string $encoding = 'UTF-8'): string
-    {
+    function encode(
+        string $input,
+        string $encoding = 'UTF-8'
+    ): string {
         return Scrub::encode($input, $encoding);
     }
 }
@@ -92,7 +96,11 @@ if (!function_exists('filter_slug')) {
         string|array $separators = ['-', '_'],
         int $maxLength = 80
     ): string {
-        return Scrub::slug($slug, $separators, $maxLength);
+        return Scrub::slug(
+            $slug,
+            $separators,
+            $maxLength
+        );
     }
 }
 
@@ -106,7 +114,7 @@ if (!function_exists('truncate')) {
         string $after = "",
         string $before = "",
         bool $reverse = false,
-        bool $preСlean = false,
+        bool $preClean = false
     ): string {
         return Scrub::truncate(
             $text,
@@ -114,7 +122,7 @@ if (!function_exists('truncate')) {
             $after,
             $before,
             $reverse,
-            $preСlean
+            $preClean
         );
     }
 }
@@ -153,9 +161,14 @@ if (!function_exists('defuse_unicode_bombs')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Scrub::defuseUnicodeBombs()
      */
-    function defuse_unicode_bombs(string $content, bool $searchEverywhere = false): string
-    {
-        return Scrub::defuseUnicodeBombs($content, $searchEverywhere);
+    function defuse_unicode_bombs(
+        string $content,
+        bool $searchEverywhere = false
+    ): string {
+        return Scrub::defuseUnicodeBombs(
+            $content,
+            $searchEverywhere
+        );
     }
 }
 
@@ -169,7 +182,12 @@ if (!function_exists('break_long_lines')) {
         int $cutLength = 1000,
         string $suffix = ''
     ): string {
-        return Scrub::breakLongLines($content, $detectLength, $cutLength, $suffix);
+        return Scrub::breakLongLines(
+            $content,
+            $detectLength,
+            $cutLength,
+            $suffix
+        );
     }
 }
 
@@ -187,9 +205,11 @@ if (!function_exists('is_url')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::url()
      */
-    function is_url(string $url): bool
-    {
-        return Valid::url($url);
+    function is_url(
+        string $url,
+        bool $requireScheme = true
+    ): bool {
+        return Valid::url($url, $requireScheme);
     }
 }
 
@@ -202,7 +222,11 @@ if (!function_exists('is_slug')) {
         string|array $separators = ['-', '_'],
         int $maxLength = 80
     ): bool {
-        return Valid::slug($slug, $separators, $maxLength);
+        return Valid::slug(
+            $slug,
+            $separators,
+            $maxLength
+        );
     }
 }
 
@@ -226,6 +250,27 @@ if (!function_exists('is_ip')) {
     }
 }
 
+if (!function_exists('is_ip_v4')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::ipv4()
+     */
+    function is_ip_v4(string $ip): bool
+    {
+        return Valid::ipv4($ip);
+    }
+}
+
+if (!function_exists('is_ip_v6')) {
+    /**
+     * @see Cleup\Guard\Purifier\Utils\Valid::ipv6()
+     */
+    function is_ip_v6(string $ip): bool
+    {
+        return Valid::ipv6($ip);
+    }
+}
+
+
 if (!function_exists('is_phone')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::phone()
@@ -240,8 +285,10 @@ if (!function_exists('is_date_format')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::dateFormat()
      */
-    function is_date_format(string $date, string $format = 'Y-m-d'): bool
-    {
+    function is_date_format(
+        string $date,
+        string $format = 'Y-m-d'
+    ): bool {
         return Valid::dateFormat($date, $format);
     }
 }
@@ -250,7 +297,7 @@ if (!function_exists('is_not_empty')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::notEmpty()
      */
-    function is_not_empty(string $value): bool
+    function is_not_empty(mixed $value): bool
     {
         return Valid::notEmpty($value);
     }
@@ -320,9 +367,18 @@ if (!function_exists('is_latin')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::latin()
      */
-    function is_latin(string $value): bool
-    {
-        return Valid::latin($value);
+    function is_latin(
+        string $value,
+        bool $allowSpaces = false,
+        bool $allowNumbers = false,
+        bool $allowPunctuation = false
+    ): bool {
+        return Valid::latin(
+            $value,
+            $allowSpaces,
+            $allowNumbers,
+            $allowPunctuation
+        );
     }
 }
 
@@ -330,7 +386,7 @@ if (!function_exists('is_positive_number')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::positiveNumber()
      */
-    function is_positive_number($number): bool
+    function is_positive_number(int|float $number): bool
     {
         return Valid::positiveNumber($number);
     }
@@ -340,7 +396,7 @@ if (!function_exists('is_negative_number')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::negativeNumber()
      */
-    function is_negative_number($number): bool
+    function is_negative_number(int|float $number): bool
     {
         return Valid::negativeNumber($number);
     }
@@ -410,9 +466,14 @@ if (!function_exists('is_strong_password')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::strongPassword()
      */
-    function is_strong_password(string $password, bool $allowCyrillic = true): bool
-    {
-        return Valid::strongPassword($password, $allowCyrillic);
+    function is_strong_password(
+        string $password,
+        bool $allowCyrillic = true
+    ): bool {
+        return Valid::strongPassword(
+            $password,
+            $allowCyrillic
+        );
     }
 }
 
@@ -430,9 +491,14 @@ if (!function_exists('is_roman_numeral')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::romanNumeral()
      */
-    function is_roman_numeral(string $value): bool
-    {
-        return Valid::romanNumeral($value);
+    function is_roman_numeral(
+        string $value,
+        bool $allowLowercase = false
+    ): bool {
+        return Valid::romanNumeral(
+            $value,
+            $allowLowercase
+        );
     }
 }
 
@@ -450,9 +516,11 @@ if (!function_exists('is_json')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::json()
      */
-    function is_json(string $json): bool
-    {
-        return Valid::json($json);
+    function is_json(
+        ?string $json,
+        bool $allowScalar = false
+    ): bool {
+        return Valid::json($json, $allowScalar);
     }
 }
 
@@ -480,9 +548,11 @@ if (!function_exists('is_dangerous')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::dangerous()
      */
-    function is_dangerous(string $content): bool
-    {
-        return Valid::dangerous($content);
+    function is_dangerous(
+        string $content,
+        int $maxLength = 100000
+    ): bool {
+        return Valid::dangerous($content, $maxLength);
     }
 }
 
@@ -490,9 +560,11 @@ if (!function_exists('is_safe_chars')) {
     /**
      * @see Cleup\Guard\Purifier\Utils\Valid::safeChars()
      */
-    function is_safe_chars(string $content): bool
-    {
-        return Valid::safeChars($content);
+    function is_safe_chars(
+        string $content,
+        int $maxLength = 100000
+    ): bool {
+        return Valid::safeChars($content, $maxLength);
     }
 }
 

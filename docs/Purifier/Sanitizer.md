@@ -27,15 +27,15 @@ $rules = [
         trim - Clears spaces at the start and end of a line.
         text - Completely clean and secure text, without tags, special characters and possible injections.
     */
-    'userNameByFilter' => 'type:string;trim;escape'
+    'userNameByFilter' => 'type:string;trim;escape',
     // Only the specified values are allowed (10, 77.3, 99).
-    'allowedNumbers' => 'type:numeric;values:10|77.3|99'
+    'allowedNumbers' => 'type:numeric;values:10|77.3|99',
     'age' => 'type:integer',
-    'incorrectTypeValue' => 'type:integer;default:10'
+    'incorrectTypeValue' => 'type:integer;default:10',
     // Integers and floating point numbers (number|numeric)
-    'nummericValue' => 'type:numeric',
+    'numericValue' => 'type:numeric',
     // (bool|boolean)
-    'boolValue' => 'type:bool'
+    'boolValue' => 'type:bool',
     // An unsafe parameter that ignores any data in the array. To set rules for an array, you can use the rule description method.
     'arrayData' => 'array', // An empty array if strict mode is enabled, or shielded data if disabled
 ];
@@ -48,10 +48,10 @@ $data = [
     'age' => 30,  // 30
     //'age' => '30' // 30 - It will be formatted as a number.
     //'age' => 'x12' // If no default value is provided, the data will be removed from the array.
-    'nummericValue' => 3.14,
+    'numericValue' => 3.14,
     'boolValue' => true, // true
-    'arrayData' => ['hello' => '<p>world</p>']  //  [] | ['hello' => '&lt;p&gt;world<&lt;/p&gt;']
-    'unsafeArrat' => ['key' => 'value']  // It will be removed from the list, as it is not included in the rules.
+    'arrayData' => ['hello' => '<p>world</p>'],  //  [] | ['hello' => '&lt;p&gt;world<&lt;/p&gt;']
+    'unsafeArray' => ['key' => 'value']  // It will be removed from the list, as it is not included in the rules.
 ];
 
 $sanitizer = new Sanitizer($rules /*, $strict = true */);

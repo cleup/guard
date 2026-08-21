@@ -19,7 +19,7 @@ class Sanitizer extends Ruleset
         $this->strict = $strict;
     }
 
-    private function getTypedData(string $type, $value): mixed
+    private function getTypedData(string $type, mixed $value): mixed
     {
         $method = 'process' . ucfirst($type);
 
@@ -102,11 +102,13 @@ class Sanitizer extends Ruleset
                             throw new \Exception(sprintf('The %s value is null', $key));
 
                         if ($hasDefault) {
-                            $processedValue = $rule['default'] ?? null;
+                            $processedValue = $this->getTypedData($rule['type'], $rule['default']);
                         }
                     }
 
-                    $this->data[$key] = $processedValue;
+                    if (!is_null($processedValue)) {
+                        $this->data[$key] = $processedValue;
+                    }
                 }
             } catch (\InvalidArgumentException $e) {
                 if ($hasDefault) {
@@ -151,7 +153,6 @@ class Sanitizer extends Ruleset
      * @return mixed
      * @throws \InvalidArgumentException When value doesn't match required type
      */
-
     private function processValue(mixed $value, array $rule): mixed
     {
         $type = $rule['type'] ?? 'string';
@@ -264,9 +265,12 @@ class Sanitizer extends Ruleset
             $result = $subSanitizer->sanitize($value)->getAll();
         } else {
             foreach ($value as $listItem) {
-                if (!$this->isListArray($listItem)) {
+                if (is_array($listItem)) {
                     $subSanitizer = new Sanitizer($rule['data'], $this->strict);
                     $result[] = $subSanitizer->sanitize($listItem)->getAll();
+                } else {
+                    $subSanitizer = new Sanitizer($rule['data'], $this->strict);
+                    $result[] = $subSanitizer->sanitize([$listItem])->getAll();
                 }
             }
         }
@@ -307,7 +311,7 @@ class Sanitizer extends Ruleset
     /**
      * @see $this->processFloating()
      */
-    private function processFloat(mixed $value): int
+    private function processFloat(mixed $value): float
     {
         return $this->processFloating($value);
     }
@@ -326,7 +330,7 @@ class Sanitizer extends Ruleset
     /**
      * @see $this->processNumeric()
      */
-    private function processNumber(mixed $value): int
+    private function processNumber(mixed $value): int|float
     {
         return $this->processNumeric($value);
     }
@@ -339,15 +343,23 @@ class Sanitizer extends Ruleset
      */
     private function processBoolean(mixed $value): bool
     {
-        $value = $this->processString($value);
+        if (is_bool($value)) {
+            return $value;
+        }
 
-        return boolval($value);
+        $value = strtolower(trim($this->processString($value)));
+
+        return match ($value) {
+            'true', '1', 'yes', 'on' => true,
+            'false', '0', 'no', 'off', '' => false,
+            default => (bool)$value
+        };
     }
 
     /**
      * @see $this->processBoolean()
      */
-    private function processBool(mixed $value): int
+    private function processBool(mixed $value): bool
     {
         return $this->processBoolean($value);
     }

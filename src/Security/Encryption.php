@@ -42,8 +42,10 @@ class Encryption
      * @param string $name Name to hash
      * @return string|null Generated UUID v5 or null on failure
      */
-    public static function generateUuidV5(string $namespace, string $name): ?string
-    {
+    public static function generateUuidV5(
+        string $namespace,
+        string $name
+    ): ?string {
         if (!self::isUuid($namespace)) {
             return null;
         }
@@ -133,10 +135,13 @@ class Encryption
      * @param mixed $data Data to encrypt (any type)
      * @param string $key Encryption key
      * @param string $method Encryption method
-     * @return string|null Encrypted data (URL-safe base64 encoded) or null on failure
+     * @return string|null Encrypted data
      */
-    public static function encrypt($data, string $key, string $method = 'AES-256-GCM'): ?string
-    {
+    public static function encrypt(
+        $data,
+        string $key,
+        string $method = 'AES-256-GCM'
+    ): ?string {
         // Check if OpenSSL extension is installed
         if (!extension_loaded('openssl')) {
             throw new \RuntimeException('OpenSSL extension is not installed or enabled');
@@ -192,8 +197,11 @@ class Encryption
      * @param string $method Encryption method used
      * @return mixed|null Original data with preserved type or null on failure
      */
-    public static function decrypt(string $encryptedData, string $key, string $method = 'AES-256-GCM'): mixed
-    {
+    public static function decrypt(
+        string $encryptedData,
+        string $key,
+        string $method = 'AES-256-GCM'
+    ): mixed {
         // Check if OpenSSL extension is installed
         if (!extension_loaded('openssl')) {
             throw new \RuntimeException('OpenSSL extension is not installed or enabled');
@@ -239,19 +247,31 @@ class Encryption
             $tag = substr($data, $ivLength, $tagLength);
             $encrypted = substr($data, $ivLength + $tagLength);
 
-            $decrypted = openssl_decrypt($encrypted, $method, $hashedKey, $options, $iv, $tag);
+            $decrypted = openssl_decrypt(
+                $encrypted,
+                $method,
+                $hashedKey,
+                $options,
+                $iv,
+                $tag
+            );
         } else {
             $iv = substr($data, 0, $ivLength);
             $encrypted = substr($data, $ivLength);
 
-            $decrypted = openssl_decrypt($encrypted, $method, $hashedKey, $options, $iv);
+            $decrypted = openssl_decrypt(
+                $encrypted,
+                $method,
+                $hashedKey,
+                $options,
+                $iv
+            );
         }
 
         if ($decrypted === false) {
             return null;
         }
 
-        // Deserialize to restore original data type
         return unserialize($decrypted);
     }
 
@@ -278,8 +298,11 @@ class Encryption
      * @param string $algo Hashing algorithm
      * @return string|null HMAC signature or null on failure
      */
-    public static function createHmac(string $data, string $key, string $algo = 'sha256'): ?string
-    {
+    public static function createHmac(
+        string $data,
+        string $key,
+        string $algo = 'sha256'
+    ): ?string {
         $result = hash_hmac($algo, $data, $key);
 
         return $result !== false ? $result : null;
@@ -294,8 +317,12 @@ class Encryption
      * @param string $algo Hashing algorithm
      * @return bool True if signature is valid
      */
-    public static function verifyHmac(string $data, string $signature, string $key, string $algo = 'sha256'): bool
-    {
+    public static function verifyHmac(
+        string $data,
+        string $signature,
+        string $key,
+        string $algo = 'sha256'
+    ): bool {
         $calculatedSignature = self::createHmac($data, $key, $algo);
         if ($calculatedSignature === null) {
             return false;

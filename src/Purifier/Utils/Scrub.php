@@ -8,12 +8,14 @@ class Scrub
      * Escapes special characters in a string for safe HTML output
      * 
      * @param string $input The input string to be escaped
-     * @param string $chaset Charset
+     * @param ?string $charset Charset
      * @return string
      */
-    public static function escape(string $input, $chaset = 'UTF-8'): string
-    {
-        return htmlspecialchars($input, ENT_QUOTES, $chaset);
+    public static function escape(
+        string $input,
+        ?string $charset = 'UTF-8'
+    ): string {
+        return htmlspecialchars($input, ENT_QUOTES, $charset);
     }
 
     /**
@@ -27,8 +29,16 @@ class Scrub
         $input = trim($input);
         $filtered = filter_var($input, FILTER_SANITIZE_EMAIL);
 
+        if (mb_strlen($filtered, 'UTF-8') > 254) {
+            return null;
+        }
+
+        if (preg_match('/\s/', $filtered)) {
+            return null;
+        }
+
         if (filter_var($filtered, FILTER_VALIDATE_EMAIL)) {
-            return $filtered;
+            return strtolower($filtered);
         }
 
         return null;
@@ -62,10 +72,7 @@ class Scrub
     {
         $url = trim($url);
 
-        // 1. Фильтрация (удаление недопустимых символов)
         $filtered = filter_var($url, FILTER_SANITIZE_URL);
-
-        // 2. Валидация
         $validated = filter_var($filtered, FILTER_VALIDATE_URL);
 
         if ($validated === false) {
@@ -132,9 +139,9 @@ class Scrub
         }
 
         $slug = mb_strtolower($slug);
-        $allowedSeps = preg_quote(implode('', $separators), '/');
-        $slug = preg_replace('/[\s' . ($allowedSeps ? '|[^\w' . $allowedSeps . ']' : '') . ']+/u', $separators[0], $slug);
-        $allowed = 'a-z0-9' . $allowedSeps;
+        $allowedSeparators = preg_quote(implode('', $separators), '/');
+        $slug = preg_replace('/[\s' . ($allowedSeparators ? '|[^\w' . $allowedSeparators . ']' : '') . ']+/u', $separators[0], $slug);
+        $allowed = 'a-z0-9' . $allowedSeparators;
         $slug = preg_replace("/[^{$allowed}]/u", '', $slug);
 
         foreach ($separators as $sep) {
@@ -156,12 +163,12 @@ class Scrub
             }
         }
 
-        $trimPattern = '/^[' . $allowedSeps . ']+|[' . $allowedSeps . ']+$/';
+        $trimPattern = '/^[' . $allowedSeparators . ']+|[' . $allowedSeparators . ']+$/';
         $slug = preg_replace($trimPattern, '', $slug);
 
         if ($maxLength > 0) {
             $slug = mb_substr($slug, 0, $maxLength);
-            $slug = preg_replace('/[' . $allowedSeps . ']+$/', '', $slug);
+            $slug = preg_replace('/[' . $allowedSeparators . ']+$/', '', $slug);
         }
 
         return $slug;
@@ -301,12 +308,14 @@ class Scrub
     {
         $input = static::toString($input);
 
+        // Заменяем запятую на точку
+        $input = str_replace(',', '.', $input);
+
         if (is_numeric($input)) {
-            if (is_float($input + 0) || strpos($input, '.') !== false || stripos($input, 'e') !== false) {
+            if (strpos($input, '.') !== false || stripos($input, 'e') !== false) {
                 return (float)$input;
-            } else {
-                return (int)$input;
             }
+            return (int)$input;
         }
 
         return 0;
@@ -360,6 +369,12 @@ class Scrub
      */
     public static function text(string $text): string
     {
+        // Remove HTML and PHP tags
+        $text = strip_tags($text);
+
+        // Convert HTML entities to their corresponding characters
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         // Remove emojis and smileys (Unicode ranges)
         $text = preg_replace('/[\x{1F600}-\x{1F64F}]/u', '', $text); // Smileys & emoticons
         $text = preg_replace('/[\x{1F300}-\x{1F5FF}]/u', '', $text); // Symbols & pictographs
@@ -367,11 +382,7 @@ class Scrub
         $text = preg_replace('/[\x{2600}-\x{26FF}]/u', '', $text);   // Miscellaneous symbols
         $text = preg_replace('/[\x{2700}-\x{27BF}]/u', '', $text);   // Dingbats
 
-        // Remove HTML and PHP tags
-        $text = strip_tags($text);
-
-        // Convert HTML entities to their corresponding characters
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Remove all remaining special characters
         $text = preg_replace('/[^\p{L}\p{N}\s.,!?;:()\'"\-–—\/]/u', '', $text);
 
         // Normalize whitespace
@@ -389,7 +400,7 @@ class Scrub
      * @param string $after Suffix if truncated
      * @param string $before Prefix if truncated
      * @param bool $reverse Truncate from end if true
-     * @param bool $preСlean Pre-cleaning and formatting
+     * @param bool $preClean Pre-cleaning and formatting
      * @return string Processed text
      */
     public static function truncate(
@@ -398,51 +409,29 @@ class Scrub
         string $after = "",
         string $before = "",
         bool $reverse = false,
-        bool $preСlean = false
+        bool $preClean = false
     ): string {
-        if ($preСlean)
+        if ($preClean) {
             $text = static::text($text);
+        }
 
         $length = mb_strlen($text);
 
-        // Extract offset and length from array or use defaults
         [$offset, $characters] = is_array($characters)
             ? [$characters[0] ?? 0, $characters[1] ?? 15]
             : [0, $characters];
 
         if ($length <= $characters) {
-            return trim($text);
+            return $text;
         }
 
-        $text = match (true) {
+        $truncated = match (true) {
             $reverse && $offset => mb_substr(mb_substr($text, 0, -$offset), -$characters),
             $reverse => mb_substr($text, -$characters),
             default => mb_substr($text, $offset, $characters)
         };
 
-        return ($length > $characters ? $before : '') . trim($text) . ($length > $characters ? $after : '');
-    }
-
-    /**
-     * @see Scrub::url()
-     * @deprecated since version 1.0.6 Use Scrub::url() instead.
-     * @param string $text The input text to be cleaned
-     * @return string
-     */
-    public static function filterUrl(string $url): string
-    {
-        return static::url($url);
-    }
-
-    /**
-     * @see Scrub::text()
-     * @deprecated since version 1.0.6 Use Scrub::text() instead.
-     * @param string $text The input text to be cleaned
-     * @return string
-     */
-    public static function filterText(string $url): mixed
-    {
-        return static::text($url);
+        return $before . trim($truncated) . $after;
     }
 
     /**
@@ -480,13 +469,12 @@ class Scrub
     public static function disarmProtocols(string $content): string
     {
         $replacements = [
-            '/php:\/\/(filter|input|glob|expect|zip|data)/i' => 'php-safe://$1',
+            '/php:\/\/(filter|input|glob|expect|zip)/i' => 'php-safe://$1',
             '/phar:\/\//i' => 'phar-safe://',
             '/\b(file|ftp|gopher|jar|ldap|ssh2?):\/\//i' => '$1-safe://',
             '/data:(text\/(html|javascript|vbscript)|application\/(x-php|javascript))/i' => 'data-safe:$1',
-            '/\b(javascript|vbscript|data|mocha):/i' => '$1-safe:',
-            '/<!ENTITY\s+/i' => '&lt;!ENTITY ',
-            '/<!DOCTYPE\s+/i' => '&lt;!DOCTYPE ',
+            '/\b(javascript|vbscript|mocha):/i' => '$1-safe:',
+            '/<!(?:ENTITY|DOCTYPE)\b[^>]*>/i' => '',
         ];
 
         return preg_replace(array_keys($replacements), array_values($replacements), $content);
@@ -517,8 +505,9 @@ class Scrub
         foreach ($lines as $line) {
             $line = rtrim($line, "\r");
 
-            if (strlen($line) >= $detectLength) {
-                $result[] = substr($line, 0, $cutLength) . $suffix;
+            if (mb_strlen($line) >= $detectLength) {
+                $chunks = mb_str_split($line, $cutLength);
+                $result[] = implode($suffix . "\n", $chunks) . $suffix;
             } else {
                 $result[] = $line;
             }
@@ -538,16 +527,12 @@ class Scrub
         string $content,
         bool $searchEverywhere = false
     ): string {
-        if (Valid::unicodeBomb($content, $searchEverywhere)) {
-            if ($searchEverywhere) {
-                return str_replace("\xEF\xBB\xBF", '', $content);
-            } else {
-                return (substr($content, 0, 3) === "\xEF\xBB\xBF")
-                    ? substr($content, 3)
-                    : $content;
-            }
+        if ($searchEverywhere) {
+            return str_replace("\xEF\xBB\xBF", '', $content);
         }
 
-        return $content;
+        return (substr($content, 0, 3) === "\xEF\xBB\xBF")
+            ? substr($content, 3)
+            : $content;
     }
 }

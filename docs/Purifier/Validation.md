@@ -26,7 +26,7 @@ $rules = [
     'age' => 'type:integer',
     'score' => 'type:numeric',
     'active' => 'type:boolean',
-    'role' => 'type:string;values:admin|user|guest'
+    'role' => 'type:string;values:admin|user|guest',
     // using an array of rules
     'contact_info' => [                  // 'type:string|numeric;min:10;max:100'
         'type' => ['string', 'numeric'], // 'type:string|numeric'

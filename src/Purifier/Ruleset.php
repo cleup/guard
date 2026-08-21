@@ -91,7 +91,7 @@ class Ruleset
      * @param string $rule - Rule string to parse
      * @return array
      */
-    public function parseRule(string $rule)
+    public function parseRule(string $rule): array
     {
         $parsedRule = [];
         [$parts, $parsedRule] = $this->ruleParts(
@@ -134,10 +134,10 @@ class Ruleset
     /**
      * Converts string rules to array format
      * 
-     * @param mixed $rule -  Rule to normalize
+     * @param string|array $rule -  Rule to normalize
      * @return array
      */
-    public function normalizeRule($rule): array
+    public function normalizeRule(string|array $rule): array
     {
         if (is_string($rule)) {
             return $this->parseRule($rule);

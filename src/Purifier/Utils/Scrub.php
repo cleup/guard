@@ -108,15 +108,27 @@ class Scrub
      * Normalizes string - trims, removes duplicate spaces, normalizes line breaks
      * 
      * @param string $input Input string
+     * @param int $maxLineBreaks Maximum allowed consecutive line breaks (default: 1, 0 = remove all line breaks)
      * @return string
      */
-    public static function normalizeString(string $input): string
+    public static function normalizeString(string $input, int $maxLineBreaks = 1): string
     {
-        $input = trim($input);
-        $input = preg_replace('/\s+/', ' ', $input); // Multiple spaces to single
-        $input = preg_replace('/\R/u', "\n", $input); // Normalize line breaks
+        $maxLineBreaks = max(0, $maxLineBreaks);
+        $input = self::purgeNullBytes($input);
+        $input = self::defuseUnicodeBombs($input);
+        $input = preg_replace('/\R/u', "\n", $input);
+        $input = preg_replace('/[^\S\n]+/u', ' ', $input);
+        $input = preg_replace('/ *\n */u', "\n", $input);
 
-        return $input;
+        if ($maxLineBreaks === 0) {
+            $input = str_replace("\n", ' ', $input);
+            $input = preg_replace('/ {2,}/u', ' ', $input);
+        } else {
+            $pattern = '/\n{' . ($maxLineBreaks + 1) . ',}/u';
+            $input = preg_replace($pattern, str_repeat("\n", $maxLineBreaks), $input);
+        }
+
+        return trim($input);
     }
 
     /**
@@ -369,6 +381,8 @@ class Scrub
      */
     public static function text(string $text): string
     {
+        $text = self::purgeNullBytes($text);
+
         // Remove HTML and PHP tags
         $text = strip_tags($text);
 

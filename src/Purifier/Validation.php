@@ -42,6 +42,7 @@ class Validation extends Ruleset
 
             if (isset($rule['before']) && is_callable($rule['before'])) {
                 $value = $rule['before']($value, $this);
+                $this->data[$key] = $value; 
             }
 
             $this->validateValue($key, $value, $rule);
